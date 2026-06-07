@@ -503,7 +503,7 @@ def export_excel():
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
 
-    # Datos
+    # Datos reales
     for r_idx, row in enumerate(rows, start=2):
         for c_idx, value in enumerate(row, start=1):
             ws.cell(row=r_idx, column=c_idx, value=value if value is not None else "")
