@@ -513,6 +513,16 @@ def export_excel():
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
+
+    # Ajustar ancho de columnas
+        for col in range(1, len(columns) + 1):
+            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28
+
+    # Formato de fechas (para que no aparezcan #)
+        date_format = 'dd/mm/yyyy'
+        for row in range(2, len(rows) + 2):
+            worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
+            worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
     
     output.seek(0)
 
