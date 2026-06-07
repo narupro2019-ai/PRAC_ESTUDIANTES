@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>👨‍🏫 Docentes</h2>
+<a href="/register_docente" class="btn btn-primary mb-3">+ Nuevo Docente</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Documento</th>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in docentes %}
+        <tr>
+            <td>{{ d['id'] }}</td>
+            <td>{{ d['documento'] }}</td>
+            <td>{{ d['nombre'] }}</td>
+            <td>{{ d.get('correo', '') }}</td>
+            <td>
+                <a href="/edit_docente/{{ d['id'] }}" class="btn btn-sm btn-warning">Editar</a>
+                <a href="/delete_docente/{{ d['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

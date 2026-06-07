@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📍 Escenarios de Práctica</h2>
+<a href="/register_escenario" class="btn btn-primary mb-3">+ Nuevo Escenario</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Código</th>
+            <th>Dirección</th>
+            <th>Cupos</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for e in escenarios %}
+        <tr>
+            <td>{{ e['id'] }}</td>
+            <td>{{ e['nombre'] }}</td>
+            <td>{{ e.get('codigo','') }}</td>
+            <td>{{ e.get('direccion','') }}</td>
+            <td>{{ e.get('cupos',5) }}</td>
+            <td>
+                <a href="/edit_escenario/{{ e['id'] }}" class="btn btn-sm btn-warning">Editar</a>
+                <a href="/delete_escenario/{{ e['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar?')">Eliminar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

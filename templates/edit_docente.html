@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Editar Docente</h2>
+
+<form method="POST">
+    <div class="mb-3">
+        <label>Documento</label>
+        <input type="text" name="documento" value="{{ docente['documento'] }}" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label>Nombre Completo</label>
+        <input type="text" name="nombre" value="{{ docente['nombre'] }}" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label>Correo</label>
+        <input type="email" name="correo" value="{{ docente.get('correo', '') }}" class="form-control">
+    </div>
+    <button type="submit" class="btn btn-primary">Actualizar Docente</button>
+    <a href="/docentes" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Registrar Estudiante</h2>
+<form method="POST">
+    <div class="mb-3"><label>Documento</label><input type="text" name="documento" class="form-control" required></div>
+    <div class="mb-3"><label>Nombre Completo</label><input type="text" name="nombre" class="form-control" required></div>
+    <div class="mb-3"><label>Código</label><input type="text" name="codigo" class="form-control"></div>
+    <div class="row">
+        <div class="col-md-4"><label>Semestre</label><input type="number" name="semestre" class="form-control"></div>
+        <div class="col-md-4"><label>Grupo</label><input type="text" name="grupo" class="form-control"></div>
+        <div class="col-md-4"><label>Nivel Práctica</label><input type="text" name="nivel_practica" class="form-control"></div>
+    </div>
+    <div class="mb-3"><label>Dirección</label><input type="text" name="direccion" class="form-control"></div>
+    <div class="row">
+        <div class="col-md-6"><label>Celular</label><input type="text" name="celular" class="form-control"></div>
+        <div class="col-md-6"><label>Correo</label><input type="email" name="correo" class="form-control"></div>
+    </div>
+    <div class="mb-3"><label>EPS</label><input type="text" name="eps" class="form-control"></div>
+    <div class="mb-3"><label>Acudiente</label><input type="text" name="acudiente" class="form-control"></div>
+    <button type="submit" class="btn btn-success">Guardar Estudiante</button>
+    <a href="/estudiantes" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

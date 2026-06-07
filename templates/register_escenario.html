@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Registrar Nuevo Escenario</h2>
+
+<form method="POST">
+    <div class="mb-3">
+        <label>Nombre del Escenario</label>
+        <input type="text" name="nombre" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label>Código</label>
+        <input type="text" name="codigo" class="form-control">
+    </div>
+    <div class="mb-3">
+        <label>Dirección</label>
+        <input type="text" name="direccion" class="form-control">
+    </div>
+    <div class="mb-3">
+        <label>Cupos</label>
+        <input type="number" name="cupos" value="5" class="form-control">
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar Escenario</button>
+    <a href="/escenarios" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
