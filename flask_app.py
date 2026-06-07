@@ -476,15 +476,15 @@ def export_excel():
     
     cur.execute('''
         SELECT 
-            e.nombre AS "Estudiante",
-            e.documento AS "Documento",
-            es.nombre AS "Escenario",
-            d.nombre AS "Docente",
-            a.rotacion AS "Rotación",
-            a.horario AS "Horario",
+            e.nombre AS Estudiante,
+            e.documento AS Documento,
+            es.nombre AS Escenario,
+            d.nombre AS Docente,
+            a.rotacion AS Rotacion,
+            a.horario AS Horario,
             a.fecha_inicio AS "Fecha Inicio",
             a.fecha_fin AS "Fecha Fin",
-            es.direccion AS "Dirección"
+            es.direccion AS Direccion
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -500,7 +500,6 @@ def export_excel():
         flash('⚠️ No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
 
-    # Convertir a DataFrame de pandas
     import pandas as pd
     import io
 
@@ -509,11 +508,24 @@ def export_excel():
     
     df = pd.DataFrame(rows, columns=columns)
 
-    # Crear archivo Excel en memoria
+    # Crear Excel
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
-    
+        
+        # Formatear el archivo después de escribirlo
+        worksheet = writer.sheets['Programación de Prácticas']
+        
+        # Ajustar ancho de columnas
+        for col in range(1, len(columns) + 1):
+            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28
+
+        # Formato de fechas (para que no aparezcan #)
+        date_format = 'dd/mm/yyyy'
+        for row in range(2, len(rows) + 2):
+            worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
+            worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
+
     output.seek(0)
 
     return send_file(
