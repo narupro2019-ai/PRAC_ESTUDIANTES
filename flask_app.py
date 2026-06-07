@@ -473,20 +473,20 @@ def delete_assignment(id):
 def export_excel():
     conn = get_db_connection()
     
-    # ← IMPORTANTE: Usamos cursor NORMAL (no RealDictCursor)
+    # ✅ Cursor NORMAL (obligatorio para este caso)
     cur = conn.cursor()  
     
     cur.execute('''
         SELECT 
-            e.nombre AS "Estudiante",
-            e.documento AS "Documento",
-            es.nombre AS "Escenario",
-            d.nombre AS "Docente",
-            a.rotacion AS "Rotación",
-            a.horario AS "Horario",
-            a.fecha_inicio AS "Fecha Inicio",
-            a.fecha_fin AS "Fecha Fin",
-            es.direccion AS "Dirección"
+            e.nombre AS estudiante,
+            e.documento,
+            es.nombre AS escenario,
+            d.nombre AS docente,
+            a.rotacion,
+            a.horario,
+            a.fecha_inicio,
+            a.fecha_fin,
+            es.direccion
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -502,7 +502,6 @@ def export_excel():
         flash('⚠️ No hay asignaciones registradas para exportar.', 'warning')
         return redirect(url_for('index'))
 
-    # Crear Excel
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Programación de Prácticas"
@@ -510,18 +509,18 @@ def export_excel():
     # Encabezados
     headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
                "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-    
+
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
 
-    # Datos reales
+    # ✅ Datos reales (esta es la parte corregida)
     for r_idx, row in enumerate(rows, start=2):
         for c_idx, value in enumerate(row, start=1):
             ws.cell(row=r_idx, column=c_idx, value=value)
 
-    # Ajustar columnas
+    # Ajustar ancho de columnas
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col)].width = 25
 
