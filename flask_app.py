@@ -473,9 +473,9 @@ def delete_assignment(id):
 def export_excel():
     conn = get_db_connection()
     cur = conn.cursor()
-
+    
     cur.execute('''
-        SELECT
+        SELECT 
             e.nombre AS Estudiante,
             e.documento AS Documento,
             es.nombre AS Escenario,
@@ -491,7 +491,7 @@ def export_excel():
         JOIN escenarios es ON a.escenario_id = es.id
         ORDER BY e.nombre ASC, a.rotacion ASC
     ''')
-
+    
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -503,9 +503,9 @@ def export_excel():
     import pandas as pd
     import io
 
-    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación",
+    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
                "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-
+    
     df = pd.DataFrame(rows, columns=columns)
 
     # Crear archivo Excel en memoria
@@ -522,13 +522,14 @@ def export_excel():
                 worksheet.cell(row=1, column=col).column_letter
             ].width = 28
 
-        # Formato de fechas (para que no aparezcan como números raros o ####)
+        # Formato de fechas (para que no aparezcan ####)
         date_format = 'DD/MM/YYYY'
         for row in range(2, len(rows) + 2):
             worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
             worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
 
     output.seek(0)
+
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
