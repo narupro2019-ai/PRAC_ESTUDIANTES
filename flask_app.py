@@ -489,28 +489,33 @@ def export_excel():
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
         JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY e.nombre, a.rotacion
+        ORDER BY e.nombre ASC, a.rotacion ASC
     ''')
+    
     rows = cur.fetchall()
     cur.close()
     conn.close()
 
+    if not rows:
+        flash('No hay asignaciones para exportar', 'warning')
+        return redirect(url_for('index'))
+
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Programación Prácticas"
+    ws.title = "Programación de Prácticas"
 
-    # Headers
+    # Encabezados
     headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
                "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
     
-    for col, header in enumerate(headers, 1):
+    for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
 
-    # Datos reales
-    for r_idx, row in enumerate(rows, 2):
-        for c_idx, value in enumerate(row, 1):
+    # Datos
+    for r_idx, row in enumerate(rows, start=2):
+        for c_idx, value in enumerate(row, start=1):
             ws.cell(row=r_idx, column=c_idx, value=value)
 
     filename = "Programacion_Practicas.xlsx"
