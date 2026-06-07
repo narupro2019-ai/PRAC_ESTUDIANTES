@@ -513,6 +513,9 @@ def export_excel():
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
+        
+        # Formatear el archivo después de escribirlo
+        worksheet = writer.sheets['Programación de Prácticas']
 
     # Ajustar ancho de columnas
         for col in range(1, len(columns) + 1):
