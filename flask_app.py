@@ -469,12 +469,15 @@ def delete_assignment(id):
     return redirect(url_for('asignaciones_list'))
 
 # ==================== EXPORTAR A EXCEL ====================
+from flask import send_file, flash, redirect, url_for
+from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font, PatternFill
+
 @app.route('/export_excel')
 def export_excel():
     conn = get_db_connection()
-    
-    # Usamos cursor NORMAL (NO RealDictCursor) para que devuelva tuplas
-    cur = conn.cursor()  
+    cur = conn.cursor()
     
     cur.execute('''
         SELECT 
@@ -494,12 +497,12 @@ def export_excel():
         ORDER BY e.nombre ASC, a.rotacion ASC
     ''')
     
-    rows = cur.fetchall()   # ← Ahora devuelve tuplas correctamente
+    rows = cur.fetchall()
     cur.close()
     conn.close()
 
     if not rows:
-        flash('⚠️ No hay asignaciones para exportar', 'warning')
+        flash('No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
 
     wb = openpyxl.Workbook()
@@ -515,19 +518,19 @@ def export_excel():
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
 
-    # Datos reales (CORREGIDO)
+    # Datos
     for r_idx, row in enumerate(rows, start=2):
         for c_idx, value in enumerate(row, start=1):
-            ws.cell(row=r_idx, column=c_idx, value=value)
+            ws.cell(row=r_idx, column=c_idx, value=value if value is not None else "")
 
-    # Ajustar ancho de columnas
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 25
+    # Guardar en memoria en lugar de disco
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
 
     filename = "Programacion_Practicas.xlsx"
-    wb.save(filename)
-    
-    return send_file(filename, as_attachment=True, download_name=filename)
+    return send_file(output, as_attachment=True, download_name=filename,
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
