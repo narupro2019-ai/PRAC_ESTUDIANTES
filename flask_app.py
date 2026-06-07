@@ -469,36 +469,49 @@ def delete_assignment(id):
     return redirect(url_for('asignaciones_list'))
 
 # ==================== EXPORTAR A EXCEL ====================
-from flask import send_file, flash, redirect, url_for
-from io import BytesIO
-import openpyxl
-from openpyxl.styles import Font, PatternFill
-
 @app.route('/export_excel')
 def export_excel():
     conn = get_db_connection()
-    cur = conn.cursor()
-
-    # Traer toda la tabla completa
-    cur.execute('SELECT * FROM asignaciones ORDER BY id ASC')
+    
+    # ← IMPORTANTE: Usamos cursor NORMAL (no RealDictCursor)
+    cur = conn.cursor()  
+    
+    cur.execute('''
+        SELECT 
+            e.nombre AS "Estudiante",
+            e.documento AS "Documento",
+            es.nombre AS "Escenario",
+            d.nombre AS "Docente",
+            a.rotacion AS "Rotación",
+            a.horario AS "Horario",
+            a.fecha_inicio AS "Fecha Inicio",
+            a.fecha_fin AS "Fecha Fin",
+            es.direccion AS "Dirección"
+        FROM asignaciones a
+        JOIN estudiantes e ON a.estudiante_id = e.id
+        JOIN docentes d ON a.docente_id = d.id
+        JOIN escenarios es ON a.escenario_id = es.id
+        ORDER BY e.nombre ASC, a.rotacion ASC
+    ''')
+    
     rows = cur.fetchall()
-
-    # Obtener nombres de columnas automáticamente
-    colnames = [desc[0] for desc in cur.description]
-
     cur.close()
     conn.close()
 
     if not rows:
-        flash('No hay registros en la tabla asignaciones', 'warning')
+        flash('⚠️ No hay asignaciones registradas para exportar.', 'warning')
         return redirect(url_for('index'))
 
+    # Crear Excel
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Asignaciones"
+    ws.title = "Programación de Prácticas"
 
-    # Encabezados dinámicos
-    for col, header in enumerate(colnames, start=1):
+    # Encabezados
+    headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
+               "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+    
+    for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
@@ -506,16 +519,16 @@ def export_excel():
     # Datos reales
     for r_idx, row in enumerate(rows, start=2):
         for c_idx, value in enumerate(row, start=1):
-            ws.cell(row=r_idx, column=c_idx, value=value if value is not None else "")
+            ws.cell(row=r_idx, column=c_idx, value=value)
 
-    # Guardar en memoria
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
+    # Ajustar columnas
+    for col in range(1, len(headers) + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 25
 
-    filename = "Asignaciones_Completas.xlsx"
-    return send_file(output, as_attachment=True, download_name=filename,
-                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    filename = "Programacion_Practicas.xlsx"
+    wb.save(filename)
+    
+    return send_file(filename, as_attachment=True, download_name=filename)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
