@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Editar Asignación</h2>
+<form method="POST">
+    <!-- Similar to new_assignment but with pre-filled values -->
+    <div class="mb-3">
+        <label>Estudiante</label>
+        <select name="estudiante_id" class="form-select" required>
+            {% for e in estudiantes %}
+            <option value="{{ e['id'] }}" {% if e['id'] == asignacion['estudiante_id'] %}selected{% endif %}>{{ e['nombre'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <!-- Add other fields similarly -->
+    <button type="submit" class="btn btn-warning">Actualizar Asignación</button>
+    <a href="/asignaciones" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
