@@ -472,7 +472,9 @@ def delete_assignment(id):
 @app.route('/export_excel')
 def export_excel():
     conn = get_db_connection()
-    cur = conn.cursor()   # ← Usamos cursor NORMAL aquí (no RealDictCursor)
+    
+    # Usamos cursor NORMAL (NO RealDictCursor) para que devuelva tuplas
+    cur = conn.cursor()  
     
     cur.execute('''
         SELECT 
@@ -492,12 +494,12 @@ def export_excel():
         ORDER BY e.nombre ASC, a.rotacion ASC
     ''')
     
-    rows = cur.fetchall()   # ← Ahora devuelve tuplas
+    rows = cur.fetchall()   # ← Ahora devuelve tuplas correctamente
     cur.close()
     conn.close()
 
     if not rows:
-        flash('⚠️ No hay asignaciones registradas para exportar', 'warning')
+        flash('⚠️ No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
 
     wb = openpyxl.Workbook()
@@ -513,14 +515,14 @@ def export_excel():
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
 
-    # Datos (CORREGIDO)
+    # Datos reales (CORREGIDO)
     for r_idx, row in enumerate(rows, start=2):
         for c_idx, value in enumerate(row, start=1):
             ws.cell(row=r_idx, column=c_idx, value=value)
 
     # Ajustar ancho de columnas
     for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
+        ws.column_dimensions[get_column_letter(col)].width = 25
 
     filename = "Programacion_Practicas.xlsx"
     wb.save(filename)
