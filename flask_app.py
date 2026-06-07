@@ -474,18 +474,17 @@ def export_excel():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Consulta con debug
     cur.execute('''
         SELECT 
-            e.nombre AS Estudiante,
-            e.documento AS Documento,
-            es.nombre AS Escenario,
-            d.nombre AS Docente,
-            a.rotacion AS Rotacion,
-            a.horario AS Horario,
+            e.nombre AS "Estudiante",
+            e.documento AS "Documento",
+            es.nombre AS "Escenario",
+            d.nombre AS "Docente",
+            a.rotacion AS "Rotación",
+            a.horario AS "Horario",
             a.fecha_inicio AS "Fecha Inicio",
             a.fecha_fin AS "Fecha Fin",
-            es.direccion AS Direccion
+            es.direccion AS "Dirección"
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -494,18 +493,14 @@ def export_excel():
     ''')
     
     rows = cur.fetchall()
-    row_count = len(rows)
     cur.close()
     conn.close()
 
-    # Debug
-    if row_count == 0:
-        flash(f'⚠️ No se encontraron asignaciones. Total registros: {row_count}', 'danger')
-        flash('Verifica que tengas asignaciones creadas con estudiante, docente y escenario.', 'info')
+    if not rows:
+        flash('⚠️ No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
-    else:
-        flash(f'✅ Se encontraron {row_count} asignaciones. Generando Excel...', 'success')
 
+    # Convertir a DataFrame de pandas
     import pandas as pd
     import io
 
@@ -514,16 +509,11 @@ def export_excel():
     
     df = pd.DataFrame(rows, columns=columns)
 
+    # Crear archivo Excel en memoria
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
-        
-        worksheet = writer.sheets['Programación de Prácticas']
-        
-        # Formato
-        for col in range(1, len(columns) + 1):
-            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28
-
+    
     output.seek(0)
 
     return send_file(
