@@ -478,42 +478,27 @@ from openpyxl.styles import Font, PatternFill
 def export_excel():
     conn = get_db_connection()
     cur = conn.cursor()
-    
-    cur.execute('''
-        SELECT 
-            e.nombre AS estudiante,
-            e.documento,
-            es.nombre AS escenario,
-            d.nombre AS docente,
-            a.rotacion,
-            a.horario,
-            a.fecha_inicio,
-            a.fecha_fin,
-            es.direccion
-        FROM asignaciones a
-        JOIN estudiantes e ON a.estudiante_id = e.id
-        JOIN docentes d ON a.docente_id = d.id
-        JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY e.nombre ASC, a.rotacion ASC
-    ''')
-    
+
+    # Traer toda la tabla completa
+    cur.execute('SELECT * FROM asignaciones ORDER BY id ASC')
     rows = cur.fetchall()
+
+    # Obtener nombres de columnas automáticamente
+    colnames = [desc[0] for desc in cur.description]
+
     cur.close()
     conn.close()
 
     if not rows:
-        flash('No hay asignaciones para exportar', 'warning')
+        flash('No hay registros en la tabla asignaciones', 'warning')
         return redirect(url_for('index'))
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Programación de Prácticas"
+    ws.title = "Asignaciones"
 
-    # Encabezados
-    headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
-               "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-    
-    for col, header in enumerate(headers, start=1):
+    # Encabezados dinámicos
+    for col, header in enumerate(colnames, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
@@ -523,12 +508,12 @@ def export_excel():
         for c_idx, value in enumerate(row, start=1):
             ws.cell(row=r_idx, column=c_idx, value=value if value is not None else "")
 
-    # Guardar en memoria en lugar de disco
+    # Guardar en memoria
     output = BytesIO()
     wb.save(output)
     output.seek(0)
 
-    filename = "Programacion_Practicas.xlsx"
+    filename = "Asignaciones_Completas.xlsx"
     return send_file(output, as_attachment=True, download_name=filename,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
