@@ -473,8 +473,8 @@ def delete_assignment(id):
 def export_excel():
     conn = get_db_connection()
     
-    # ✅ Cursor NORMAL (obligatorio para este caso)
-    cur = conn.cursor()  
+    # ✅ Forzamos cursor NORMAL (tuplas) ignorando RealDictCursor
+    cur = conn.cursor(cursor_factory=None)  
     
     cur.execute('''
         SELECT 
@@ -499,7 +499,7 @@ def export_excel():
     conn.close()
 
     if not rows:
-        flash('⚠️ No hay asignaciones registradas para exportar.', 'warning')
+        flash('⚠️ No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
 
     wb = openpyxl.Workbook()
@@ -509,16 +509,17 @@ def export_excel():
     # Encabezados
     headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
                "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-
+    
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
 
-    # ✅ Datos reales (esta es la parte corregida)
+    # Datos - Versión ultra segura
     for r_idx, row in enumerate(rows, start=2):
         for c_idx, value in enumerate(row, start=1):
-            ws.cell(row=r_idx, column=c_idx, value=value)
+            # Convertimos todo a string para evitar errores de tipo
+            ws.cell(row=r_idx, column=c_idx, value=str(value) if value is not None else "")
 
     # Ajustar ancho de columnas
     for col in range(1, len(headers) + 1):
