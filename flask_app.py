@@ -519,7 +519,7 @@ def export_excel():
 
     # Ajustar ancho de columnas
         for col in range(1, len(columns) + 1):
-            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28 
+            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 20 
         
 
     # Formato de fechas (para que no aparezcan #)
