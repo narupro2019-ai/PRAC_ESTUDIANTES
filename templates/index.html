@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-4">Dashboard - Programación de Prácticas</h1>
+
+<a href="/export_excel" class="btn btn-success mb-3">📊 Exportar a Excel</a>
+<a href="/new_assignment" class="btn btn-primary mb-3">+ Nueva Asignación</a>
+
+<h3>Últimas Asignaciones</h3>
+{% if asignaciones %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Estudiante</th>
+            <th>Documento</th>
+            <th>Escenario</th>
+            <th>Docente</th>
+            <th>Rotación</th>
+            <th>Horario</th>
+            <th>Fechas</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in asignaciones %}
+        <tr>
+            <td>{{ a['estudiante'] }}</td>
+            <td>{{ a['documento'] }}</td>
+            <td>{{ a['escenario'] }}</td>
+            <td>{{ a['docente'] }}</td>
+            <td>{{ a['rotacion'] }}</td>
+            <td>{{ a['horario'] }}</td>
+            <td>{{ a['fecha_inicio'] }} - {{ a['fecha_fin'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No hay asignaciones aún.</p>
+{% endif %}
+{% endblock %}
