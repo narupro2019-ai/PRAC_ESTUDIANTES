@@ -472,21 +472,19 @@ def delete_assignment(id):
 @app.route('/export_excel')
 def export_excel():
     conn = get_db_connection()
-    
-    # ✅ Forzamos cursor NORMAL (tuplas) ignorando RealDictCursor
-    cur = conn.cursor(cursor_factory=None)  
+    cur = conn.cursor()
     
     cur.execute('''
         SELECT 
-            e.nombre AS estudiante,
-            e.documento,
-            es.nombre AS escenario,
-            d.nombre AS docente,
-            a.rotacion,
-            a.horario,
-            a.fecha_inicio,
-            a.fecha_fin,
-            es.direccion
+            e.nombre AS "Estudiante",
+            e.documento AS "Documento",
+            es.nombre AS "Escenario",
+            d.nombre AS "Docente",
+            a.rotacion AS "Rotación",
+            a.horario AS "Horario",
+            a.fecha_inicio AS "Fecha Inicio",
+            a.fecha_fin AS "Fecha Fin",
+            es.direccion AS "Dirección"
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -502,33 +500,28 @@ def export_excel():
         flash('⚠️ No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Programación de Prácticas"
+    # Convertir a DataFrame de pandas
+    import pandas as pd
+    import io
 
-    # Encabezados
-    headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
+    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
                "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
     
-    for col, header in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    df = pd.DataFrame(rows, columns=columns)
 
-    # Datos - Versión ultra segura
-    for r_idx, row in enumerate(rows, start=2):
-        for c_idx, value in enumerate(row, start=1):
-            # Convertimos todo a string para evitar errores de tipo
-            ws.cell(row=r_idx, column=c_idx, value=str(value) if value is not None else "")
-
-    # Ajustar ancho de columnas
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 25
-
-    filename = "Programacion_Practicas.xlsx"
-    wb.save(filename)
+    # Crear archivo Excel en memoria
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
     
-    return send_file(filename, as_attachment=True, download_name=filename)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='Programacion_Practicas.xlsx'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
