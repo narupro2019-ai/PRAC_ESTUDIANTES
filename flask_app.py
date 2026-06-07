@@ -518,8 +518,19 @@ def export_excel():
         worksheet = writer.sheets['Programación de Prácticas']
 
     # Ajustar ancho de columnas
-        for col in range(1, len(columns) + 1):
-            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28
+        #for col in range(1, len(columns) + 1):
+            #worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28 
+        # Ajuste automático de ancho de columnas
+        for col_idx, col_name in enumerate(columns, 1):
+            max_length = len(col_name)
+            for row in rows:
+                value = row[col_idx-1]
+                if value is not None:
+                    max_length = max(max_length, len(str(value)))
+            adjusted_width = max_length + 2  # margen extra
+            worksheet.column_dimensions[
+                worksheet.cell(row=1, column=col_idx).column_letter
+            ].width = adjusted_width
 
     # Formato de fechas (para que no aparezcan #)
         date_format = 'dd/mm/yyyy'
