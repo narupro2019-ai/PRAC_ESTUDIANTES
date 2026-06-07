@@ -474,6 +474,7 @@ def export_excel():
     conn = get_db_connection()
     cur = conn.cursor()
     
+    # Consulta con debug
     cur.execute('''
         SELECT 
             e.nombre AS Estudiante,
@@ -493,12 +494,17 @@ def export_excel():
     ''')
     
     rows = cur.fetchall()
+    row_count = len(rows)
     cur.close()
     conn.close()
 
-    if not rows:
-        flash('⚠️ No hay asignaciones para exportar', 'warning')
+    # Debug
+    if row_count == 0:
+        flash(f'⚠️ No se encontraron asignaciones. Total registros: {row_count}', 'danger')
+        flash('Verifica que tengas asignaciones creadas con estudiante, docente y escenario.', 'info')
         return redirect(url_for('index'))
+    else:
+        flash(f'✅ Se encontraron {row_count} asignaciones. Generando Excel...', 'success')
 
     import pandas as pd
     import io
@@ -508,23 +514,15 @@ def export_excel():
     
     df = pd.DataFrame(rows, columns=columns)
 
-    # Crear Excel
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
         
-        # Formatear el archivo después de escribirlo
         worksheet = writer.sheets['Programación de Prácticas']
         
-        # Ajustar ancho de columnas
+        # Formato
         for col in range(1, len(columns) + 1):
             worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 28
-
-        # Formato de fechas (para que no aparezcan #)
-        date_format = 'dd/mm/yyyy'
-        for row in range(2, len(rows) + 2):
-            worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
-            worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
 
     output.seek(0)
 
