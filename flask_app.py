@@ -473,9 +473,18 @@ def delete_assignment(id):
 def export_excel():
     conn = get_db_connection()
     cur = conn.cursor()
+    
     cur.execute('''
-        SELECT e.nombre as estudiante, e.documento, es.nombre as escenario, d.nombre as docente,
-               a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin, es.direccion
+        SELECT 
+            e.nombre AS estudiante,
+            e.documento,
+            es.nombre AS escenario,
+            d.nombre AS docente,
+            a.rotacion,
+            a.horario,
+            a.fecha_inicio,
+            a.fecha_fin,
+            es.direccion
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -488,24 +497,25 @@ def export_excel():
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Programacion_Practicas"
+    ws.title = "Programación Prácticas"
 
-    headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+    # Headers
+    headers = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
+               "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+    
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True)
+        cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
 
-    for row_idx, row in enumerate(rows, 2):
-        for col_idx, value in enumerate(row, 1):
-            ws.cell(row=row_idx, column=col_idx, value=value)
+    # Datos reales
+    for r_idx, row in enumerate(rows, 2):
+        for c_idx, value in enumerate(row, 1):
+            ws.cell(row=r_idx, column=c_idx, value=value)
 
-    ws.column_dimensions['A'].width = 30
-    ws.column_dimensions['B'].width = 15
-    ws.column_dimensions['C'].width = 25
-
-    filename = f"Programacion_Practicas_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    filename = "Programacion_Practicas.xlsx"
     wb.save(filename)
+    
     return send_file(filename, as_attachment=True, download_name=filename)
 
 if __name__ == '__main__':
