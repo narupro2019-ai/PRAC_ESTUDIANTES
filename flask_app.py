@@ -406,6 +406,23 @@ def edit_assignment(id):
             fecha_inicio = request.form['fecha_inicio']
             fecha_fin = request.form['fecha_fin']
 
+            # Validación de conflictos (incluyendo horario)
+            cur.execute('''
+                SELECT COUNT(*) AS count FROM asignaciones 
+                WHERE estudiante_id = %s 
+                  AND horario = %s 
+                  AND id <> %s
+                  AND ((fecha_inicio <= %s AND fecha_fin >= %s) 
+                    OR (fecha_inicio <= %s AND fecha_fin >= %s))
+            ''', (estudiante_id, horario, id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
+            
+            if cur.fetchone()['count'] > 0:
+                flash('❌ Conflicto detectado: El estudiante ya tiene asignación en ese horario y fechas', 'danger')
+                cur.close()
+                conn.close()
+                return redirect(url_for('edit_assignment', id=id))
+
+            # Actualización de la asignación
             cur.execute('''
                 UPDATE asignaciones 
                 SET estudiante_id = %s,
@@ -423,8 +440,6 @@ def edit_assignment(id):
             flash('✅ Asignación actualizada correctamente', 'success')
             return redirect(url_for('asignaciones_list'))
             
-        except ValueError:
-            flash('❌ Error: Verifique que todos los campos estén seleccionados', 'danger')
         except Exception as e:
             flash(f'❌ Error al actualizar: {str(e)}', 'danger')
             conn.rollback()
@@ -433,24 +448,24 @@ def edit_assignment(id):
             conn.close()
 
     # ==================== GET - Cargar datos para editar ====================
-    # Cargar la asignación actual
-    cur.execute('''
-        SELECT * FROM asignaciones WHERE id = %s
-    ''', (id,))
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM asignaciones WHERE id = %s', (id,))
     asignacion = cur.fetchone()
 
     if not asignacion:
         flash('Asignación no encontrada', 'danger')
+        cur.close()
+        conn.close()
         return redirect(url_for('asignaciones_list'))
 
     # Cargar listas para los selects
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
     
-    cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
+    cur.execute("SELECT id, nombre FROM docentes WHERE estado = 'Activo' ORDER BY nombre")
     docentes = cur.fetchall()
     
-    cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
+    cur.execute("SELECT id, nombre FROM escenarios WHERE estado = 'Activo' ORDER BY nombre")
     escenarios = cur.fetchall()
     
     cur.close()
@@ -461,6 +476,7 @@ def edit_assignment(id):
                          estudiantes=estudiantes, 
                          docentes=docentes, 
                          escenarios=escenarios)
+
 
 
 @app.route('/delete_assignment/<int:id>')
