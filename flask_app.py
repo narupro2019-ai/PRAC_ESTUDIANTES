@@ -904,11 +904,15 @@ def auto_assignment():
             from datetime import datetime, timedelta
             fecha_ini = datetime.strptime(fecha_inicio, "%Y-%m-%d")
             fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
-            semanas_por_rotacion = (fecha_fin_dt - fecha_ini).days // 7
+
+            # Duración en días de cada rotación
+            duracion_rotacion = (fecha_fin_dt - fecha_ini).days + 1
 
             for r in range(2, total_rotaciones + 1):
-                fecha_ini_r = fecha_ini + timedelta(weeks=semanas_por_rotacion * (r-1))
-                fecha_fin_r = fecha_fin_dt + timedelta(weeks=semanas_por_rotacion * (r-1))
+                # inicio = día siguiente al fin de la rotación anterior
+                fecha_ini_r = fecha_ini + timedelta(days=duracion_rotacion * (r-1))
+                # fin = inicio + duración - 1
+                fecha_fin_r = fecha_ini_r + timedelta(days=duracion_rotacion - 1)
 
                 for est, esc in asignaciones_r1:
                     nuevo_esc = escenarios[(escenarios.index(esc) + (r-1)) % total_rotaciones]
@@ -920,7 +924,7 @@ def auto_assignment():
                     ''', (est, docente_fijo, nuevo_esc, r, horario, fecha_ini_r.date(), fecha_fin_r.date()))
 
             conn.commit()
-            flash('✅ Rotaciones generadas automáticamente con docentes fijos en sus escenarios', 'success')
+            flash('✅ Rotaciones generadas automáticamente con fechas consecutivas y docentes fijos en sus escenarios', 'success')
             return redirect(url_for('asignaciones_list'))
 
         except Exception as e:
