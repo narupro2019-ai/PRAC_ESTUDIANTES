@@ -487,14 +487,33 @@ def edit_assignment(id):
 
 @app.route('/delete_assignment/<int:id>')
 def delete_assignment(id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM asignaciones WHERE id = %s", (id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    flash('🗑️ Asignación eliminada correctamente', 'danger')
-    return redirect(url_for('asignaciones_list'))
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Verificar que la asignación existe antes de eliminar
+        cur.execute("SELECT id FROM asignaciones WHERE id = %s", (id,))
+        if not cur.fetchone():
+            flash('Asignación no encontrada', 'warning')
+            return redirect(url_for('asignaciones_list'))
+
+        cur.execute("DELETE FROM asignaciones WHERE id = %s", (id,))
+        conn.commit()
+        
+        flash('🗑️ Asignación eliminada correctamente', 'danger')
+        return redirect(url_for('asignaciones_list'))
+        
+    except Exception as e:
+        flash(f'❌ Error al eliminar la asignación: {str(e)}', 'danger')
+        if conn:
+            conn.rollback()
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 # ==================== REPORTES ====================
 @app.route('/generate_excel_report')
