@@ -2,7 +2,7 @@
 {% block content %}
 
 <div class="container mt-4">
-    <h2>✏️ Editar Asignación</h2>
+    <h2>✏️ Editar Asignación de Práctica</h2>
     
     <div class="card shadow-sm">
         <div class="card-body">
@@ -34,7 +34,7 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Escenario</label>
+                        <label class="form-label">Escenario de Práctica</label>
                         <select class="form-select" name="escenario_id" required>
                             {% for es in escenarios %}
                             <option value="{{ es['id'] }}" 
@@ -47,12 +47,11 @@
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Rotación</label>
                         <select class="form-select" name="rotacion" required>
-                            {% for i in range(1,6) %}
-                            <option value="{{ i }}" 
-                                {% if i == asignacion['rotacion'] %}selected{% endif %}>
-                                Rotación {{ i }}
-                            </option>
-                            {% endfor %}
+                            <option value="1" {% if asignacion['rotacion'] == 1 %}selected{% endif %}>Rotación 1</option>
+                            <option value="2" {% if asignacion['rotacion'] == 2 %}selected{% endif %}>Rotación 2</option>
+                            <option value="3" {% if asignacion['rotacion'] == 3 %}selected{% endif %}>Rotación 3</option>
+                            <option value="4" {% if asignacion['rotacion'] == 4 %}selected{% endif %}>Rotación 4</option>
+                            <option value="5" {% if asignacion['rotacion'] == 5 %}selected{% endif %}>Rotación 5</option>
                         </select>
                     </div>
                 </div>
