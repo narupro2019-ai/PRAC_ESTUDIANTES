@@ -1,46 +1,89 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 class="mb-4">Dashboard - Programación de Prácticas</h1>
 
-<a href="/export_excel" class="btn btn-success mb-3">📊 Exportar a Excel</a>
-<a href="/new_assignment" class="btn btn-primary mb-3">+ Nueva Asignación</a>
-<a href="{{ url_for('generate_excel_report') }}" class="btn btn-success btn-lg me-2">
-                📊 Generar Reporte Excel Profesional
+<div class="container mt-5">
+    <h1 class="text-center mb-4">🏠 Dashboard - Programación de Prácticas Académicas</h1>
+    <p class="text-center text-muted mb-4">Gestión de Prácticas 2026-1</p>
+
+    <!-- Botones Principales -->
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-12 text-center">
+            <a href="{{ url_for('new_assignment') }}" class="btn btn-primary btn-lg mx-2">
+                📅 Nueva Asignación
+            </a>
+            <a href="{{ url_for('estudiantes') }}" class="btn btn-info btn-lg mx-2">
+                👥 Estudiantes
+            </a>
+            <a href="{{ url_for('docentes') }}" class="btn btn-info btn-lg mx-2">
+                👨‍🏫 Docentes
+            </a>
+            <a href="{{ url_for('escenarios') }}" class="btn btn-info btn-lg mx-2">
+                🏥 Escenarios
+            </a>
+            <a href="{{ url_for('asignaciones_list') }}" class="btn btn-warning btn-lg mx-2">
+                📋 Ver Asignaciones
+            </a>
+        </div>
+    </div>
+
+    <!-- Botones de Reportes Profesionales -->
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-12 text-center">
+            <h5 class="mb-3">📊 Generar Reportes Profesionales</h5>
+            
+            <a href="{{ url_for('generate_excel_report') }}" class="btn btn-success btn-lg mx-2 shadow">
+                📊 Exportar Excel Completo
             </a>
             
-            <a href="{{ url_for('generate_pdf_report') }}" class="btn btn-danger btn-lg me-2">
-                📄 Generar Reporte PDF
+            <a href="{{ url_for('generate_pdf_report') }}" class="btn btn-danger btn-lg mx-2 shadow">
+                📄 Exportar PDF Profesional
             </a>
+        </div>
+    </div>
 
-<h3>Últimas Asignaciones</h3>
-{% if asignaciones %}
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Estudiante</th>
-            <th>Documento</th>
-            <th>Escenario</th>
-            <th>Docente</th>
-            <th>Rotación</th>
-            <th>Horario</th>
-            <th>Fechas</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for a in asignaciones %}
-        <tr>
-            <td>{{ a['estudiante'] }}</td>
-            <td>{{ a['documento'] }}</td>
-            <td>{{ a['escenario'] }}</td>
-            <td>{{ a['docente'] }}</td>
-            <td>{{ a['rotacion'] }}</td>
-            <td>{{ a['horario'] }}</td>
-            <td>{{ a['fecha_inicio'] }} - {{ a['fecha_fin'] }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>No hay asignaciones aún.</p>
-{% endif %}
+    <hr>
+
+    <!-- Últimas Asignaciones -->
+    <h3 class="mb-3">📋 Últimas Asignaciones</h3>
+
+    {% if asignaciones %}
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Documento</th>
+                    <th>Docente</th>
+                    <th>Escenario</th>
+                    <th>Rotación</th>
+                    <th>Horario</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in asignaciones %}
+                <tr>
+                    <td>{{ a['estudiante'] }}</td>
+                    <td>{{ a['documento'] }}</td>
+                    <td>{{ a['docente'] }}</td>
+                    <td>{{ a['escenario'] }}</td>
+                    <td><strong>{{ a['rotacion'] }}</strong></td>
+                    <td>{{ a['horario'] }}</td>
+                    <td>{{ a['fecha_inicio'] }}</td>
+                    <td>{{ a['fecha_fin'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No hay asignaciones registradas todavía.
+        <br><a href="{{ url_for('new_assignment') }}" class="btn btn-primary mt-3">Crear la primera asignación</a>
+    </div>
+    {% endif %}
+
+</div>
+
 {% endblock %}
