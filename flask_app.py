@@ -333,89 +333,62 @@ def asignaciones_list():
 
 @app.route('/new_assignment', methods=['GET', 'POST'])
 def new_assignment():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
     if request.method == 'POST':
-        conn = None
-        cur = None
         try:
-            # Capturar valores del formulario
-            estudiante_id = request.form.get('estudiante_id')
-            docente_id = request.form.get('docente_id')
-            escenario_id = request.form.get('escenario_id')
-            rotacion = request.form.get('rotacion')
-            horario = request.form.get('horario', '').strip()
-            fecha_inicio = request.form.get('fecha_inicio')
-            fecha_fin = request.form.get('fecha_fin')
+            estudiante_id = int(request.form['estudiante_id'])
+            docente_id = int(request.form['docente_id'])
+            escenario_id = int(request.form['escenario_id'])
+            rotacion = int(request.form['rotacion'])
+            horario = request.form['horario'].strip()
+            fecha_inicio = request.form['fecha_inicio']
+            fecha_fin = request.form['fecha_fin']
 
-            # Validaciones básicas
-            if not estudiante_id or not docente_id or not escenario_id or not rotacion:
-                flash('❌ Debe seleccionar estudiante, docente, escenario y rotación', 'danger')
-                return redirect(url_for('new_assignment'))
-
-            # Conversión segura a enteros
-            estudiante_id = int(estudiante_id)
-            docente_id = int(docente_id)
-            escenario_id = int(escenario_id)
-            rotacion = int(rotacion)
-
-            conn = get_db_connection()
-            cur = conn.cursor()
-
-            # Validación de conflicto de fechas
+            # Validación de conflictos (incluyendo horario)
             cur.execute('''
-                SELECT COUNT(*) FROM asignaciones 
+                SELECT COUNT(*) AS count FROM asignaciones 
                 WHERE estudiante_id = %s 
-                AND (
-                    (fecha_inicio <= %s AND fecha_fin >= %s) 
-                    OR (fecha_inicio <= %s AND fecha_fin >= %s)
-                )
-            ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
-
-            conflictos = cur.fetchone()[0]
-            if conflictos > 0:
-                flash('❌ Conflicto: El estudiante ya tiene asignación en ese rango de fechas.', 'danger')
+                  AND horario = %s 
+                  AND ((fecha_inicio <= %s AND fecha_fin >= %s) 
+                    OR (fecha_inicio <= %s AND fecha_fin >= %s))
+            ''', (estudiante_id, horario, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
+            
+            if cur.fetchone()['count'] > 0:
+                flash('❌ Conflicto detectado: El estudiante ya tiene asignación en ese horario y fechas', 'danger')
+                cur.close()
+                conn.close()
                 return redirect(url_for('new_assignment'))
 
             # Inserción en la tabla
             cur.execute('''
-                INSERT INTO asignaciones 
-                (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
+                INSERT INTO asignaciones (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin))
-            
             conn.commit()
             flash('✅ Asignación creada correctamente', 'success')
             return redirect(url_for('asignaciones_list'))
 
-        except ValueError:
-            flash('❌ Error: Verifique que los campos seleccionados sean válidos', 'danger')
         except Exception as e:
-            flash(f'❌ Error al guardar: {str(e)}', 'danger')
-            if conn:
-                conn.rollback()
+            flash(f'Error al guardar: {str(e)}', 'danger')
+            conn.rollback()
         finally:
-            if cur:
-                cur.close()
-            if conn:
-                conn.close()
+            cur.close()
+            conn.close()
 
-    # GET - Cargar formulario
-    conn = get_db_connection()
+    # GET - cargar listas
     cur = conn.cursor()
-    
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
-    cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
+    cur.execute("SELECT id, nombre FROM docentes WHERE estado = 'Activo' ORDER BY nombre")
     docentes = cur.fetchall()
-    cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
+    cur.execute("SELECT id, nombre FROM escenarios WHERE estado = 'Activo' ORDER BY nombre")
     escenarios = cur.fetchall()
-    
     cur.close()
     conn.close()
     
-    return render_template('new_assignment.html', 
-                         estudiantes=estudiantes, 
-                         docentes=docentes, 
-                         escenarios=escenarios)
+    return render_template('new_assignment.html', estudiantes=estudiantes, docentes=docentes, escenarios=escenarios)
 
 
 @app.route('/edit_assignment/<int:id>', methods=['GET', 'POST'])
