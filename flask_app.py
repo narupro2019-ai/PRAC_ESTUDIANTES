@@ -510,21 +510,30 @@ def delete_assignment(id):
             conn.close()
 
 # ==================== REPORTES ====================
+# ==================== EXPORTAR A EXCEL ====================
 @app.route('/generate_excel_report')
 def generate_excel_report():
     conn = get_db_connection()
     cur = conn.cursor()
+    
     cur.execute('''
-        SELECT e.nombre as Estudiante, e.cedula as Cedula, e.nivel_practica as Nivel,
-               e.grupo, d.nombre as Docente, es.nombre as Escenario, 
-               a.rotacion as Rotacion, a.horario, a.fecha_inicio as "Fecha Inicio", 
-               a.fecha_fin as "Fecha Fin"
+        SELECT 
+            e.nombre AS "Estudiante",
+            e.cedula AS "Documento",
+            es.nombre AS "Escenario",
+            d.nombre AS "Docente",
+            a.rotacion AS "Rotación",
+            a.horario AS "Horario",
+            a.fecha_inicio AS "Fecha Inicio",
+            a.fecha_fin AS "Fecha Fin",
+            es.direccion AS "Dirección"
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
         JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY e.nivel_practica, a.rotacion, e.nombre
+        ORDER BY e.nombre ASC, a.rotacion ASC
     ''')
+    
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -536,30 +545,39 @@ def generate_excel_report():
     import pandas as pd
     import io
 
-    columns = ["Estudiante", "Cédula", "Nivel", "Grupo", "Docente", "Escenario", 
-               "Rotación", "Horario", "Fecha Inicio", "Fecha Fin"]
+    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
+               "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+    
     df = pd.DataFrame(rows, columns=columns)
 
+    # Crear archivo Excel en memoria
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
-        ws = writer.sheets['Programación de Prácticas']
+        
+        worksheet = writer.sheets['Programación de Prácticas']
 
         # Ajustar ancho de columnas
         for col in range(1, len(columns) + 1):
-            ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 20
+            worksheet.column_dimensions[
+                worksheet.cell(row=1, column=col).column_letter
+            ].width = 20 
 
-        # Formato de fechas
+        # Formato de fechas (para que no aparezcan ####)
         date_format = 'DD/MM/YYYY'
         for row in range(2, len(rows) + 2):
-            ws.cell(row=row, column=9).number_format = date_format  # Fecha Inicio
-            ws.cell(row=row, column=10).number_format = date_format  # Fecha Fin
-
+            worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
+            worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
+    
     output.seek(0)
-    return send_file(output,
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                     as_attachment=True,
-                     download_name='Programacion_Practicas_2026-1.xlsx')
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='Programacion_Practicas.xlsx'
+    )
+
 
 
 @app.route('/generate_pdf_report')
