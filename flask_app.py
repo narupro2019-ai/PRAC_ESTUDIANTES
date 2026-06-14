@@ -334,9 +334,12 @@ def asignaciones_list():
 @app.route('/new_assignment', methods=['GET', 'POST'])
 def new_assignment():
     if request.method == 'POST':
-        conn = get_db_connection()
-        cur = conn.cursor()
+        conn = None
+        cur = None
         try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
             estudiante_id = int(request.form['estudiante_id'])
             docente_id = int(request.form['docente_id'])
             escenario_id = int(request.form['escenario_id'])
@@ -357,7 +360,7 @@ def new_assignment():
                 flash('❌ Conflicto: El estudiante ya tiene asignación en ese horario y fechas.', 'danger')
                 return redirect(url_for('new_assignment'))
 
-            # Insertar
+            # Guardar asignación
             cur.execute('''
                 INSERT INTO asignaciones 
                 (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
@@ -369,24 +372,27 @@ def new_assignment():
             return redirect(url_for('asignaciones_list'))
 
         except ValueError:
-            flash('❌ Error: Verifique que todos los campos estén completos', 'danger')
-        except psycopg2.IntegrityError:
-            flash('❌ Error de integridad en la base de datos', 'danger')
+            flash('❌ Error: Todos los campos son obligatorios', 'danger')
         except Exception as e:
-            flash(f'❌ Error inesperado: {str(e)}', 'danger')   # ← Esto te mostrará el error real
-            conn.rollback()
+            flash(f'❌ Error al guardar: {str(e)}', 'danger')
+            if conn:
+                conn.rollback()
         finally:
-            cur.close()
-            conn.close()
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
 
-    # GET - Cargar formulario
+    # ==================== GET ====================
     conn = get_db_connection()
     cur = conn.cursor()
     
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
+    
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
     docentes = cur.fetchall()
+    
     cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
     escenarios = cur.fetchall()
     
@@ -397,7 +403,6 @@ def new_assignment():
                          estudiantes=estudiantes, 
                          docentes=docentes, 
                          escenarios=escenarios)
-
 
 @app.route('/edit_assignment/<int:id>', methods=['GET', 'POST'])
 def edit_assignment(id):
