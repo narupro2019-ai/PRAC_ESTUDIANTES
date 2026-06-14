@@ -963,55 +963,6 @@ def delete_all_assignments():
             conn.close()
 
 
-@app.route('/edit_rotation/<int:rotacion>', methods=['GET', 'POST'])
-def edit_rotation(rotacion):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    if request.method == 'POST':
-        try:
-            nuevo_horario = request.form['horario'].strip()
-            nueva_fecha_inicio = request.form['fecha_inicio']
-            nueva_fecha_fin = request.form['fecha_fin']
-
-            # ✅ Validación de fechas
-            if nueva_fecha_inicio > nueva_fecha_fin:
-                flash('⚠️ La fecha de inicio no puede ser mayor que la fecha fin', 'danger')
-                return redirect(url_for('edit_rotation', rotacion=rotacion))
-
-            # ✅ Actualizar todas las asignaciones de esa rotación
-            cur.execute('''
-                UPDATE asignaciones
-                SET horario = %s,
-                    fecha_inicio = %s,
-                    fecha_fin = %s
-                WHERE rotacion = %s
-            ''', (nuevo_horario, nueva_fecha_inicio, nueva_fecha_fin, rotacion))
-
-            conn.commit()
-            flash(f'✅ Rotación {rotacion} actualizada: {nueva_fecha_inicio} → {nueva_fecha_fin}', 'success')
-            return redirect(url_for('asignaciones_list'))
-
-        except Exception as e:
-            flash(f'❌ Error al actualizar la rotación {rotacion}: {str(e)}', 'danger')
-            conn.rollback()
-        finally:
-            cur.close()
-            conn.close()
-
-    # ✅ GET - obtener datos actuales de la rotación
-    cur = conn.cursor()
-    cur.execute('SELECT DISTINCT horario, fecha_inicio, fecha_fin FROM asignaciones WHERE rotacion = %s', (rotacion,))
-    datos = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not datos:
-        flash(f'⚠️ Rotación {rotacion} no encontrada', 'warning')
-        return redirect(url_for('asignaciones_list'))
-
-    return render_template('edit_rotation.html', rotacion=rotacion, datos=datos)
-
         
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
