@@ -877,10 +877,13 @@ def auto_assignment():
 
             # Rotación 1: asignar estudiantes a escenarios en orden
             asignaciones_r1 = []
+            docentes_por_escenario = {}  # mapa escenario -> docente
+
             for i, est in enumerate(estudiantes):
                 esc = escenarios[i % len(escenarios)]
                 doc = docentes[i % len(docentes)]
-                asignaciones_r1.append((est, doc, esc))
+                asignaciones_r1.append((est, esc))
+                docentes_por_escenario[esc] = doc  # docente fijo en su escenario
 
                 cur.execute('''
                     INSERT INTO asignaciones (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
@@ -897,15 +900,17 @@ def auto_assignment():
                 fecha_ini_r = fecha_ini + timedelta(weeks=semanas_por_rotacion * (r-1))
                 fecha_fin_r = fecha_fin_dt + timedelta(weeks=semanas_por_rotacion * (r-1))
 
-                for i, (est, doc, esc) in enumerate(asignaciones_r1):
+                for est, esc in asignaciones_r1:
                     nuevo_esc = escenarios[(escenarios.index(esc) + (r-1)) % total_rotaciones]
+                    docente_fijo = docentes_por_escenario[nuevo_esc]  # docente permanece en su escenario
+
                     cur.execute('''
                         INSERT INTO asignaciones (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ''', (est, doc, nuevo_esc, r, horario, fecha_ini_r.date(), fecha_fin_r.date()))
+                    ''', (est, docente_fijo, nuevo_esc, r, horario, fecha_ini_r.date(), fecha_fin_r.date()))
 
             conn.commit()
-            flash('✅ Rotaciones generadas automáticamente', 'success')
+            flash('✅ Rotaciones generadas automáticamente con docentes fijos en sus escenarios', 'success')
             return redirect(url_for('asignaciones_list'))
 
         except Exception as e:
