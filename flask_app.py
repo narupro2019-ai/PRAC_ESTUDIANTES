@@ -852,9 +852,84 @@ def generate_pdf_report():
                          as_attachment=True,
                          download_name='Programacion_Practicas_2026-1.pdf')
 
+    
+
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
         return redirect(url_for('index'))
+
+
+@app.route('/auto_assignment', methods=['GET', 'POST'])
+def auto_assignment():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        try:
+            estudiantes = request.form.getlist('estudiantes')  # lista de IDs
+            docentes = request.form.getlist('docentes')        # lista de IDs
+            escenarios = request.form.getlist('escenarios')    # lista de IDs
+            horario = request.form['horario'].strip()
+            fecha_inicio = request.form['fecha_inicio']
+            fecha_fin = request.form['fecha_fin']
+
+            total_rotaciones = len(escenarios)
+
+            # Rotación 1: asignar estudiantes a escenarios en orden
+            asignaciones_r1 = []
+            for i, est in enumerate(estudiantes):
+                esc = escenarios[i % len(escenarios)]
+                doc = docentes[i % len(docentes)]
+                asignaciones_r1.append((est, doc, esc))
+
+                cur.execute('''
+                    INSERT INTO asignaciones (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ''', (est, doc, esc, 1, horario, fecha_inicio, fecha_fin))
+
+            # Generar rotaciones automáticas
+            from datetime import datetime, timedelta
+            fecha_ini = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            semanas_por_rotacion = (fecha_fin_dt - fecha_ini).days // 7
+
+            for r in range(2, total_rotaciones + 1):
+                fecha_ini_r = fecha_ini + timedelta(weeks=semanas_por_rotacion * (r-1))
+                fecha_fin_r = fecha_fin_dt + timedelta(weeks=semanas_por_rotacion * (r-1))
+
+                for i, (est, doc, esc) in enumerate(asignaciones_r1):
+                    nuevo_esc = escenarios[(escenarios.index(esc) + (r-1)) % total_rotaciones]
+                    cur.execute('''
+                        INSERT INTO asignaciones (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ''', (est, doc, nuevo_esc, r, horario, fecha_ini_r.date(), fecha_fin_r.date()))
+
+            conn.commit()
+            flash('✅ Rotaciones generadas automáticamente', 'success')
+            return redirect(url_for('asignaciones_list'))
+
+        except Exception as e:
+            flash(f'❌ Error: {str(e)}', 'danger')
+            conn.rollback()
+        finally:
+            cur.close()
+            conn.close()
+
+    # GET - cargar listas
+    cur = conn.cursor()
+    cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
+    estudiantes = cur.fetchall()
+    cur.execute("SELECT id, nombre FROM docentes WHERE estado = 'Activo' ORDER BY nombre")
+    docentes = cur.fetchall()
+    cur.execute("SELECT id, nombre FROM escenarios WHERE estado = 'Activo' ORDER BY nombre")
+    escenarios = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return render_template('auto_assignment.html',
+                           estudiantes=estudiantes,
+                           docentes=docentes,
+                           escenarios=escenarios)
 
 
 
