@@ -360,20 +360,21 @@ def new_assignment():
             conn = get_db_connection()
             cur = conn.cursor()
 
-            # Validación de conflicto de fechas
-            cur.execute('''
-                SELECT COUNT(*) FROM asignaciones 
-                WHERE estudiante_id = %s 
-                AND (
-                    (fecha_inicio <= %s AND fecha_fin >= %s) 
-                    OR (fecha_inicio <= %s AND fecha_fin >= %s)
-                )
-            ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
-            
-            conflictos = cur.fetchone()[0]
-            if conflictos > 0:
-                flash('❌ Conflicto: El estudiante ya tiene asignación en ese rango de fechas.', 'danger')
-                return redirect(url_for('new_assignment'))
+            # Validación de conflicto
+cur.execute('''
+    SELECT COUNT(*) FROM asignaciones 
+    WHERE estudiante_id = %s 
+    AND (
+        (fecha_inicio <= %s AND fecha_fin >= %s) 
+        OR (fecha_inicio <= %s AND fecha_fin >= %s)
+    )
+''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
+
+conflictos = cur.fetchone()[0]
+if conflictos > 0:
+    flash('❌ Conflicto: El estudiante ya tiene asignación en ese rango de fechas.', 'danger')
+    return redirect(url_for('new_assignment'))
+
 
             # Inserción en la tabla
             cur.execute('''
