@@ -602,12 +602,11 @@ def generate_pdf_report():
         for row in rows:
             fila = []
             for idx, val in enumerate(row):
-                # columnas 7 y 8 son fecha_inicio y fecha_fin
-                if idx in (7, 8) and val is not None:
+                if idx in (7, 8) and val is not None:  # columnas fecha_inicio y fecha_fin
                     if isinstance(val, (datetime.date, datetime.datetime)):
                         fila.append(val.strftime("%d/%m/%Y"))
                     else:
-                        fila.append(str(val))  # ya es string
+                        fila.append(str(val))
                 else:
                     fila.append(str(val))
             data.append(fila)
@@ -633,6 +632,7 @@ def generate_pdf_report():
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
         return redirect(url_for('index'))
+
 
         
 if __name__ == '__main__':
