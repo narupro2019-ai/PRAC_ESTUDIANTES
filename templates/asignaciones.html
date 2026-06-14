@@ -1,31 +1,48 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Asignaciones de Prácticas</h2>
-<a href="/new_assignment" class="btn btn-primary mb-3">+ Nueva Asignación</a>
 
-<table class="table table-hover">
-    <thead>
-        <tr>
-            <th>Estudiante</th><th>Docente</th><th>Escenario</th><th>Rotación</th>
-            <th>Horario</th><th>Inicio</th><th>Fin</th><th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for a in asignaciones %}
-        <tr>
-            <td>{{ a['estudiante'] }}</td>
-            <td>{{ a['docente'] }}</td>
-            <td>{{ a['escenario'] }}</td>
-            <td>{{ a['rotacion'] }}</td>
-            <td>{{ a['horario'] }}</td>
-            <td>{{ a['fecha_inicio'] }}</td>
-            <td>{{ a['fecha_fin'] }}</td>
-            <td>
-                <a href="/edit_assignment/{{ a['id'] }}" class="btn btn-warning btn-sm">Editar</a>
-                <a href="/delete_assignment/{{ a['id'] }}" class="btn btn-danger btn-sm" onclick="return confirm('Eliminar asignación?')">Eliminar</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="container mt-4">
+    <h2>📋 Asignaciones de Prácticas</h2>
+    <a href="{{ url_for('new_assignment') }}" class="btn btn-primary mb-3">+ Nueva Asignación</a>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Estudiante</th>
+                    <th>Cédula</th>
+                    <th>Docente</th>
+                    <th>Escenario</th>
+                    <th>Rotación</th>
+                    <th>Horario</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in asignaciones %}
+                <tr>
+                    <td>{{ a['estudiante'] }}</td>
+                    <td>{{ a['cedula'] }}</td>
+                    <td>{{ a['docente'] }}</td>
+                    <td>{{ a['escenario'] }}</td>
+                    <td><strong>{{ a['rotacion'] }}</strong></td>
+                    <td>{{ a['horario'] }}</td>
+                    <td>{{ a['fecha_inicio'] }}</td>
+                    <td>{{ a['fecha_fin'] }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_assignment', id=a['id']) }}" class="btn btn-warning btn-sm">Editar</a>
+                        <a href="{{ url_for('delete_assignment', id=a['id']) }}" class="btn btn-danger btn-sm" 
+                           onclick="return confirm('¿Eliminar esta asignación?')">Eliminar</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center">No hay asignaciones registradas</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endblock %}
