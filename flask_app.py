@@ -2,10 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
+import pandas as pd
+import io
 from datetime import datetime
-import openpyxl
-from openpyxl.styles import Font, PatternFill
-from openpyxl.utils import get_column_letter
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
@@ -26,11 +25,11 @@ def init_db():
             id SERIAL PRIMARY KEY,
             cedula TEXT UNIQUE NOT NULL,
             nombre TEXT NOT NULL,
-            sitio TEXT,                    -- Ej: "PRÁCTICA I A.M (501)"
+            sitio TEXT,
             programa TEXT DEFAULT 'Fisioterapia',
             sede TEXT,
-            nivel_practica TEXT,           -- Ej: 'Práctica Hospitalaria Fisioterapéutica 1'
-            grupo TEXT,                    -- Ej: 501, 601, 701
+            nivel_practica TEXT,
+            grupo TEXT,
             correo TEXT,
             fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -56,7 +55,7 @@ def init_db():
             estudiante_id INTEGER REFERENCES estudiantes(id) ON DELETE CASCADE,
             docente_id INTEGER REFERENCES docentes(id) ON DELETE SET NULL,
             escenario_id INTEGER REFERENCES escenarios(id) ON DELETE SET NULL,
-            nivel_practica TEXT NOT NULL,      -- Nivel específico
+            nivel_practica TEXT,
             grupo TEXT,
             rotacion INTEGER NOT NULL,
             horario TEXT,
@@ -78,13 +77,13 @@ def index():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('''
-        SELECT a.id, e.nombre as estudiante, e.documento, d.nombre as docente, 
+        SELECT a.id, e.nombre as estudiante, e.cedula, d.nombre as docente, 
                es.nombre as escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
         JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY a.fecha_creacion DESC LIMIT 15
+        ORDER BY a.fecha_creacion DESC LIMIT 10
     ''')
     asignaciones = cur.fetchall()
     cur.close()
@@ -105,30 +104,26 @@ def estudiantes():
 @app.route('/register_estudiante', methods=['GET', 'POST'])
 def register_estudiante():
     if request.method == 'POST':
-        documento = request.form['documento'].strip()
+        cedula = request.form['cedula'].strip()
         nombre = request.form['nombre'].strip()
-        codigo = request.form.get('codigo', '').strip()
-        semestre = int(request.form.get('semestre', 0))
-        grupo = request.form.get('grupo', '').strip()
-        nivel_practica = request.form.get('nivel_practica', '').strip()
-        direccion = request.form.get('direccion', '').strip()
-        celular = request.form.get('celular', '').strip()
+        sitio = request.form['sitio'].strip()
+        nivel_practica = request.form['nivel_practica']
+        programa = request.form.get('programa', 'Fisioterapia')
+        sede = request.form['sede'].strip()
         correo = request.form.get('correo', '').strip()
-        eps = request.form.get('eps', '').strip()
-        acudiente = request.form.get('acudiente', '').strip()
 
         conn = get_db_connection()
         cur = conn.cursor()
         try:
             cur.execute('''
-                INSERT INTO estudiantes (documento, nombre, codigo, semestre, grupo, nivel_practica, direccion, celular, correo, eps, acudiente)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (documento, nombre, codigo, semestre, grupo, nivel_practica, direccion, celular, correo, eps, acudiente))
+                INSERT INTO estudiantes (cedula, nombre, sitio, nivel_practica, programa, sede, correo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (cedula, nombre, sitio, nivel_practica, programa, sede, correo))
             conn.commit()
             flash('✅ Estudiante registrado con éxito', 'success')
             return redirect(url_for('estudiantes'))
         except psycopg2.IntegrityError:
-            flash('⚠️ Ya existe un estudiante con ese documento', 'danger')
+            flash('⚠️ Ya existe un estudiante con esa cédula', 'danger')
             conn.rollback()
         finally:
             cur.close()
@@ -140,33 +135,23 @@ def edit_estudiante(id):
     conn = get_db_connection()
     cur = conn.cursor()
     if request.method == 'POST':
-        documento = request.form['documento'].strip()
+        cedula = request.form['cedula'].strip()
         nombre = request.form['nombre'].strip()
-        codigo = request.form.get('codigo', '').strip()
-        semestre = int(request.form.get('semestre', 0))
-        grupo = request.form.get('grupo', '').strip()
-        nivel_practica = request.form.get('nivel_practica', '').strip()
-        direccion = request.form.get('direccion', '').strip()
-        celular = request.form.get('celular', '').strip()
+        sitio = request.form['sitio'].strip()
+        nivel_practica = request.form['nivel_practica']
+        programa = request.form.get('programa', 'Fisioterapia')
+        sede = request.form['sede'].strip()
         correo = request.form.get('correo', '').strip()
-        eps = request.form.get('eps', '').strip()
-        acudiente = request.form.get('acudiente', '').strip()
 
-        try:
-            cur.execute('''
-                UPDATE estudiantes SET documento=%s, nombre=%s, codigo=%s, semestre=%s, grupo=%s, 
-                nivel_practica=%s, direccion=%s, celular=%s, correo=%s, eps=%s, acudiente=%s
-                WHERE id=%s
-            ''', (documento, nombre, codigo, semestre, grupo, nivel_practica, direccion, celular, correo, eps, acudiente, id))
-            conn.commit()
-            flash('✅ Estudiante actualizado', 'success')
-            return redirect(url_for('estudiantes'))
-        except psycopg2.IntegrityError:
-            flash('⚠️ Documento ya existe', 'danger')
-            conn.rollback()
-        finally:
-            cur.close()
-            conn.close()
+        cur.execute('''
+            UPDATE estudiantes 
+            SET cedula=%s, nombre=%s, sitio=%s, nivel_practica=%s, 
+                programa=%s, sede=%s, correo=%s
+            WHERE id=%s
+        ''', (cedula, nombre, sitio, nivel_practica, programa, sede, correo, id))
+        conn.commit()
+        flash('✅ Estudiante actualizado', 'success')
+        return redirect(url_for('estudiantes'))
 
     cur.execute("SELECT * FROM estudiantes WHERE id = %s", (id,))
     estudiante = cur.fetchone()
@@ -207,14 +192,14 @@ def register_docente():
         cur = conn.cursor()
         try:
             cur.execute('''
-                INSERT INTO docentes (documento, nombre, correo) VALUES (%s, %s, %s)
+                INSERT INTO docentes (documento, nombre, correo)
+                VALUES (%s, %s, %s)
             ''', (documento, nombre, correo))
             conn.commit()
-            flash('✅ Docente registrado', 'success')
+            flash('✅ Docente registrado con éxito', 'success')
             return redirect(url_for('docentes'))
         except psycopg2.IntegrityError:
-            flash('⚠️ Documento ya existe', 'danger')
-            conn.rollback()
+            flash('⚠️ Ya existe un docente con ese documento', 'danger')
         finally:
             cur.close()
             conn.close()
@@ -229,19 +214,12 @@ def edit_docente(id):
         nombre = request.form['nombre'].strip()
         correo = request.form.get('correo', '').strip()
 
-        try:
-            cur.execute('''
-                UPDATE docentes SET documento=%s, nombre=%s, correo=%s WHERE id=%s
-            ''', (documento, nombre, correo, id))
-            conn.commit()
-            flash('✅ Docente actualizado', 'success')
-            return redirect(url_for('docentes'))
-        except psycopg2.IntegrityError:
-            flash('⚠️ Documento ya existe', 'danger')
-            conn.rollback()
-        finally:
-            cur.close()
-            conn.close()
+        cur.execute('''
+            UPDATE docentes SET documento=%s, nombre=%s, correo=%s WHERE id=%s
+        ''', (documento, nombre, correo, id))
+        conn.commit()
+        flash('✅ Docente actualizado', 'success')
+        return redirect(url_for('docentes'))
 
     cur.execute("SELECT * FROM docentes WHERE id = %s", (id,))
     docente = cur.fetchone()
@@ -275,22 +253,20 @@ def escenarios():
 def register_escenario():
     if request.method == 'POST':
         nombre = request.form['nombre'].strip()
-        codigo = request.form.get('codigo', '').strip()
         direccion = request.form.get('direccion', '').strip()
         cupos = int(request.form.get('cupos', 10))
 
         conn = get_db_connection()
         cur = conn.cursor()
-        try:
-            cur.execute('''
-                INSERT INTO escenarios (nombre, codigo, direccion, cupos) VALUES (%s, %s, %s, %s)
-            ''', (nombre, codigo, direccion, cupos))
-            conn.commit()
-            flash('✅ Escenario registrado', 'success')
-            return redirect(url_for('escenarios'))
-        finally:
-            cur.close()
-            conn.close()
+        cur.execute('''
+            INSERT INTO escenarios (nombre, direccion, cupos)
+            VALUES (%s, %s, %s)
+        ''', (nombre, direccion, cupos))
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash('✅ Escenario registrado', 'success')
+        return redirect(url_for('escenarios'))
     return render_template('register_escenario.html')
 
 @app.route('/edit_escenario/<int:id>', methods=['GET', 'POST'])
@@ -299,17 +275,14 @@ def edit_escenario(id):
     cur = conn.cursor()
     if request.method == 'POST':
         nombre = request.form['nombre'].strip()
-        codigo = request.form.get('codigo', '').strip()
         direccion = request.form.get('direccion', '').strip()
         cupos = int(request.form.get('cupos', 10))
 
         cur.execute('''
-            UPDATE escenarios SET nombre=%s, codigo=%s, direccion=%s, cupos=%s WHERE id=%s
-        ''', (nombre, codigo, direccion, cupos, id))
+            UPDATE escenarios SET nombre=%s, direccion=%s, cupos=%s WHERE id=%s
+        ''', (nombre, direccion, cupos, id))
         conn.commit()
         flash('✅ Escenario actualizado', 'success')
-        cur.close()
-        conn.close()
         return redirect(url_for('escenarios'))
 
     cur.execute("SELECT * FROM escenarios WHERE id = %s", (id,))
@@ -329,14 +302,15 @@ def delete_escenario(id):
     flash('🗑️ Escenario eliminado', 'danger')
     return redirect(url_for('escenarios'))
 
-# ==================== ASIGNACIONES CRUD CON VALIDACIÓN ====================
+# ==================== ASIGNACIONES ====================
 @app.route('/asignaciones')
 def asignaciones_list():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('''
-        SELECT a.id, e.nombre as estudiante, d.nombre as docente, es.nombre as escenario,
-               a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
+        SELECT a.id, e.nombre as estudiante, e.cedula, d.nombre as docente, 
+               es.nombre as escenario, a.rotacion, a.horario, 
+               a.fecha_inicio, a.fecha_fin
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -357,92 +331,33 @@ def new_assignment():
         docente_id = int(request.form['docente_id'])
         escenario_id = int(request.form['escenario_id'])
         rotacion = int(request.form['rotacion'])
-        horario = request.form['horario'].strip()
+        horario = request.form.get('horario', '')
         fecha_inicio = request.form['fecha_inicio']
         fecha_fin = request.form['fecha_fin']
 
-        # Validación de conflictos
+        # Validación de conflicto
         cur.execute('''
             SELECT COUNT(*) FROM asignaciones 
             WHERE estudiante_id = %s 
-              AND horario = %s 
-              AND ((fecha_inicio <= %s AND fecha_fin >= %s) 
-                OR (fecha_inicio <= %s AND fecha_fin >= %s))
-        ''', (estudiante_id, horario, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
+            AND ((fecha_inicio <= %s AND fecha_fin >= %s) OR (fecha_inicio <= %s AND fecha_fin >= %s))
+        ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
         
-        if cur.fetchone()['count'] > 0:
-            flash('❌ Conflicto detectado: El estudiante ya tiene asignación en ese horario y fechas', 'danger')
+        if cur.fetchone()[0] > 0:
+            flash('❌ Conflicto de horario/fechas con otra asignación del estudiante', 'danger')
             conn.close()
             return redirect(url_for('new_assignment'))
 
-        try:
-            cur.execute('''
-                INSERT INTO asignaciones (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin))
-            conn.commit()
-            flash('✅ Asignación creada correctamente', 'success')
-            return redirect(url_for('asignaciones_list'))
-        except Exception as e:
-            flash(f'Error: {str(e)}', 'danger')
-            conn.rollback()
-        finally:
-            cur.close()
-            conn.close()
-
-    # GET - cargar listas
-    cur.execute("SELECT id, nombre, documento FROM estudiantes ORDER BY nombre")
-    estudiantes = cur.fetchall()
-    cur.execute("SELECT id, nombre FROM docentes WHERE estado = 'Activo' ORDER BY nombre")
-    docentes = cur.fetchall()
-    cur.execute("SELECT id, nombre FROM escenarios WHERE estado = 'Activo' ORDER BY nombre")
-    escenarios = cur.fetchall()
-    cur.close()
-    conn.close()
-    return render_template('new_assignment.html', estudiantes=estudiantes, docentes=docentes, escenarios=escenarios)
-
-@app.route('/edit_assignment/<int:id>', methods=['GET', 'POST'])
-def edit_assignment(id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        estudiante_id = int(request.form['estudiante_id'])
-        docente_id = int(request.form['docente_id'])
-        escenario_id = int(request.form['escenario_id'])
-        rotacion = int(request.form['rotacion'])
-        horario = request.form['horario'].strip()
-        fecha_inicio = request.form['fecha_inicio']
-        fecha_fin = request.form['fecha_fin']
-
-        # Validación de conflictos (excluyendo la asignación actual)
         cur.execute('''
-            SELECT COUNT(*) FROM asignaciones 
-            WHERE estudiante_id = %s AND id != %s
-              AND horario = %s 
-              AND ((fecha_inicio <= %s AND fecha_fin >= %s) 
-                OR (fecha_inicio <= %s AND fecha_fin >= %s))
-        ''', (estudiante_id, id, horario, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
-        
-        if cur.fetchone()['count'] > 0:
-            flash('❌ Conflicto detectado', 'danger')
-            conn.close()
-            return redirect(url_for('edit_assignment', id=id))
-
-        cur.execute('''
-            UPDATE asignaciones 
-            SET estudiante_id=%s, docente_id=%s, escenario_id=%s, rotacion=%s, 
-                horario=%s, fecha_inicio=%s, fecha_fin=%s
-            WHERE id=%s
-        ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin, id))
+            INSERT INTO asignaciones 
+            (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin))
         conn.commit()
-        flash('✅ Asignación actualizada', 'success')
-        cur.close()
-        conn.close()
-        return redirect(url_for('asignaciones_list'))
+        flash('✅ Asignación creada correctamente', 'success')
+        return redirect(url_for('index'))
 
-    cur.execute("SELECT * FROM asignaciones WHERE id = %s", (id,))
-    asignacion = cur.fetchone()
-    cur.execute("SELECT id, nombre, documento FROM estudiantes ORDER BY nombre")
+    # GET
+    cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
     docentes = cur.fetchall()
@@ -450,107 +365,18 @@ def edit_assignment(id):
     escenarios = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('edit_assignment.html', asignacion=asignacion, estudiantes=estudiantes, docentes=docentes, escenarios=escenarios)
+    return render_template('new_assignment.html', estudiantes=estudiantes, docentes=docentes, escenarios=escenarios)
 
-@app.route('/delete_assignment/<int:id>')
-def delete_assignment(id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM asignaciones WHERE id = %s", (id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    flash('🗑️ Asignación eliminada', 'danger')
-    return redirect(url_for('asignaciones_list'))
-
-# ==================== EXPORTAR A EXCEL ====================
-@app.route('/export_excel')
-def export_excel():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
-    cur.execute('''
-        SELECT 
-            e.nombre AS "Estudiante",
-            e.documento AS "Documento",
-            es.nombre AS "Escenario",
-            d.nombre AS "Docente",
-            a.rotacion AS "Rotación",
-            a.horario AS "Horario",
-            a.fecha_inicio AS "Fecha Inicio",
-            a.fecha_fin AS "Fecha Fin",
-            es.direccion AS "Dirección"
-        FROM asignaciones a
-        JOIN estudiantes e ON a.estudiante_id = e.id
-        JOIN docentes d ON a.docente_id = d.id
-        JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY e.nombre ASC, a.rotacion ASC
-    ''')
-    
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    if not rows:
-        flash('⚠️ No hay asignaciones para exportar', 'warning')
-        return redirect(url_for('index'))
-
-    # Convertir a DataFrame de pandas
-    import pandas as pd
-    import io
-
-    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
-               "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-    
-    df = pd.DataFrame(rows, columns=columns)
-
-    # Crear archivo Excel en memoria
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
-        
-        # Formatear el archivo después de escribirlo
-        worksheet = writer.sheets['Programación de Prácticas']
-
-    # Ajustar ancho de columnas
-        for col in range(1, len(columns) + 1):
-            worksheet.column_dimensions[worksheet.cell(row=1, column=col).column_letter].width = 20 
-        
-
-    # Formato de fechas (para que no aparezcan #)
-        date_format = 'dd/mm/yyyy'
-        for row in range(2, len(rows) + 2):
-            worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
-            worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
-    
-    output.seek(0)
-
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name='Programacion_Practicas.xlsx'
-    )
-
-# ==================== REPORTE EXCEL PROFESIONAL ====================
+# ==================== REPORTES ====================
 @app.route('/generate_excel_report')
 def generate_excel_report():
     conn = get_db_connection()
     cur = conn.cursor()
-    
     cur.execute('''
-        SELECT 
-            e.nombre as estudiante,
-            e.documento,
-            e.nivel_practica,
-            e.grupo,
-            d.nombre as docente,
-            es.nombre as escenario,
-            a.rotacion,
-            a.horario,
-            a.fecha_inicio,
-            a.fecha_fin,
-            es.direccion
+        SELECT e.nombre as Estudiante, e.cedula as Cedula, e.nivel_practica as Nivel, 
+               e.grupo, d.nombre as Docente, es.nombre as Escenario, 
+               a.rotacion as Rotacion, a.horario, a.fecha_inicio as "Fecha Inicio", 
+               a.fecha_fin as "Fecha Fin"
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -562,115 +388,23 @@ def generate_excel_report():
     conn.close()
 
     if not rows:
-        flash('No hay asignaciones para generar el reporte', 'warning')
+        flash('No hay datos para generar el reporte', 'warning')
         return redirect(url_for('index'))
 
-    import pandas as pd
-    import io
-
-    columns = ["Estudiante", "Documento", "Nivel Práctica", "Grupo", "Docente", 
-               "Escenario", "Rotación", "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-    
+    columns = ["Estudiante", "Cédula", "Nivel", "Grupo", "Docente", "Escenario", 
+               "Rotación", "Horario", "Fecha Inicio", "Fecha Fin"]
     df = pd.DataFrame(rows, columns=columns)
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Programación General')
-        
-        ws = writer.sheets['Programación General']
-        
-        # Formato similar a tus archivos
-        for col in range(1, len(columns) + 1):
-            col_letter = ws.cell(row=1, column=col).column_letter
-            ws.column_dimensions[col_letter].width = 28
-
-        # Título grande
-        ws['A1'] = "PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1"
-        ws.merge_cells('A1:K1')
-        ws['A1'].font = Font(bold=True, size=14)
+        df.to_excel(writer, index=False, sheet_name='Programación')
+        ws = writer.sheets['Programación']
+        for col in range(1, len(columns)+1):
+            ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 25
 
     output.seek(0)
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name='Programacion_Practicas_2026-1.xlsx'
-    )
-
-
-# ==================== REPORTE PDF PROFESIONAL ====================
-@app.route('/generate_pdf_report')
-def generate_pdf_report():
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet
-    import io
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('''
-        SELECT 
-            e.nombre, e.documento, e.nivel_practica, e.grupo,
-            d.nombre as docente, es.nombre as escenario,
-            a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
-        FROM asignaciones a
-        JOIN estudiantes e ON a.estudiante_id = e.id
-        JOIN docentes d ON a.docente_id = d.id
-        JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY e.nivel_practica, a.rotacion, e.nombre
-    ''')
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    if not rows:
-        flash('No hay datos para generar el PDF', 'warning')
-        return redirect(url_for('index'))
-
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), 
-                           rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-    
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    # Título
-    title = Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", styles['Title'])
-    elements.append(title)
-    elements.append(Spacer(1, 20))
-
-    # Datos en tabla
-    data = [["Estudiante", "Documento", "Nivel", "Grupo", "Docente", "Escenario", 
-             "Rotación", "Horario", "Fecha Inicio", "Fecha Fin"]]
-    
-    for row in rows:
-        data.append([str(x) for x in row])
-
-    table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-
-    elements.append(table)
-    doc.build(elements)
-
-    buffer.seek(0)
-    return send_file(
-        buffer,
-        mimetype='application/pdf',
-        as_attachment=True,
-        download_name='Programacion_Practicas_2026-1.pdf'
-    )
-
-
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True, download_name='Programacion_Practicas_2026-1.xlsx')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
