@@ -510,12 +510,12 @@ def delete_assignment(id):
             conn.close()
 
 # ==================== REPORTES ====================
+
 # ==================== EXPORTAR A EXCEL ====================
 @app.route('/generate_excel_report')
 def generate_excel_report():
     conn = get_db_connection()
     cur = conn.cursor()
-    
     cur.execute('''
         SELECT 
             e.nombre AS "Estudiante",
@@ -533,7 +533,6 @@ def generate_excel_report():
         JOIN escenarios es ON a.escenario_id = es.id
         ORDER BY e.nombre ASC, a.rotacion ASC
     ''')
-    
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -544,38 +543,148 @@ def generate_excel_report():
 
     import pandas as pd
     import io
+    from openpyxl import Workbook
+    from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
 
-    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación", 
+    columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación",
                "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-    
     df = pd.DataFrame(rows, columns=columns)
+    for col in ["Fecha Inicio", "Fecha Fin"]:
+        df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime("%d/%m/%Y").fillna("")
 
-    # Crear archivo Excel en memoria
+    # ── Colores (mismos que el PDF) ──
+    C_TITULO    = "2E75B6"
+    C_ROTACION  = "1F4E79"
+    C_ESCENARIO = "003366"
+    C_DOCENTE   = "E2EFDA"
+    C_GRIS      = "F2F2F2"
+    C_BLANCO    = "FFFFFF"
+
+    thin   = Side(style='thin', color='BFBFBF')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def fill(hex_color):
+        return PatternFill("solid", fgColor=hex_color)
+
+    def font_white_bold(size=10):
+        return Font(name='Arial', bold=True, color='FFFFFF', size=size)
+
+    def font_dark_bold_italic(size=9):
+        return Font(name='Arial', bold=True, italic=True, color='1F4E79', size=size)
+
+    def font_normal(size=9):
+        return Font(name='Arial', size=size)
+
+    def align_center():
+        return Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    def align_left():
+        return Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Programación 2026-1"
+    current_row = 1
+
+    # ── Título principal ──
+    ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=8)
+    cell = ws.cell(row=current_row, column=1,
+                   value="PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1")
+    cell.fill = fill(C_TITULO)
+    cell.font = font_white_bold(13)
+    cell.alignment = align_center()
+    ws.row_dimensions[current_row].height = 22
+    current_row += 2
+
+    for horario, df_horario in df.groupby("Horario", sort=True):
+
+        # ── Banda de horario ──
+        ws.merge_cells(start_row=current_row, start_column=1,
+                       end_row=current_row, end_column=8)
+        cell = ws.cell(row=current_row, column=1, value=f"Horario: {horario}")
+        cell.fill = fill(C_TITULO)
+        cell.font = font_white_bold(11)
+        cell.alignment = align_left()
+        ws.row_dimensions[current_row].height = 18
+        current_row += 1
+
+        for rotacion, df_rot in df_horario.groupby("Rotación", sort=True):
+            fecha_ini = df_rot["Fecha Inicio"].iloc[0]
+            fecha_fin = df_rot["Fecha Fin"].iloc[0]
+            escenarios_orden = list(dict.fromkeys(df_rot["Escenario"].tolist()))
+            n_cols = len(escenarios_orden)
+
+            esc_data = {}
+            for esc in escenarios_orden:
+                sub = df_rot[df_rot["Escenario"] == esc]
+                esc_data[esc] = {
+                    "docente":     sub["Docente"].iloc[0],
+                    "estudiantes": sub["Estudiante"].tolist()
+                }
+
+            # ── Banda de rotación ──
+            ws.merge_cells(start_row=current_row, start_column=1,
+                           end_row=current_row, end_column=n_cols)
+            cell = ws.cell(row=current_row, column=1,
+                           value=f"Rotación {rotacion}:   {fecha_ini}  →  {fecha_fin}")
+            cell.fill = fill(C_ROTACION)
+            cell.font = font_white_bold(10)
+            cell.alignment = align_left()
+            ws.row_dimensions[current_row].height = 16
+            current_row += 1
+
+            # ── Fila de escenarios ──
+            for col_idx, esc in enumerate(escenarios_orden, start=1):
+                cell = ws.cell(row=current_row, column=col_idx, value=esc)
+                cell.fill = fill(C_ESCENARIO)
+                cell.font = font_white_bold(9)
+                cell.alignment = align_center()
+                cell.border = border
+            ws.row_dimensions[current_row].height = 30
+            current_row += 1
+
+            # ── Fila de docentes ──
+            for col_idx, esc in enumerate(escenarios_orden, start=1):
+                cell = ws.cell(row=current_row, column=col_idx,
+                               value=f"Docente: {esc_data[esc]['docente']}")
+                cell.fill = fill(C_DOCENTE)
+                cell.font = font_dark_bold_italic(8)
+                cell.alignment = align_center()
+                cell.border = border
+            ws.row_dimensions[current_row].height = 16
+            current_row += 1
+
+            # ── Filas de estudiantes ──
+            max_est = max(len(esc_data[e]["estudiantes"]) for e in escenarios_orden)
+            for i in range(max_est):
+                bg = C_GRIS if i % 2 == 0 else C_BLANCO
+                for col_idx, esc in enumerate(escenarios_orden, start=1):
+                    lst = esc_data[esc]["estudiantes"]
+                    val = lst[i] if i < len(lst) else ""
+                    cell = ws.cell(row=current_row, column=col_idx, value=val)
+                    cell.fill = fill(bg)
+                    cell.font = font_normal(8)
+                    cell.alignment = align_center()
+                    cell.border = border
+                ws.row_dimensions[current_row].height = 14
+                current_row += 1
+
+            current_row += 1  # espacio entre rotaciones
+
+    # ── Ancho de columnas ──
+    for col_idx in range(1, 9):
+        ws.column_dimensions[get_column_letter(col_idx)].width = 28
+
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
-        
-        worksheet = writer.sheets['Programación de Prácticas']
-
-        # Ajustar ancho de columnas
-        for col in range(1, len(columns) + 1):
-            worksheet.column_dimensions[
-                worksheet.cell(row=1, column=col).column_letter
-            ].width = 20 
-
-        # Formato de fechas (para que no aparezcan ####)
-        date_format = 'DD/MM/YYYY'
-        for row in range(2, len(rows) + 2):
-            worksheet.cell(row=row, column=7).number_format = date_format  # Fecha Inicio
-            worksheet.cell(row=row, column=8).number_format = date_format  # Fecha Fin
-    
+    wb.save(output)
     output.seek(0)
 
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name='Programacion_Practicas.xlsx'
+        download_name='Programacion_Practicas_2026-1.xlsx'
     )
 
 
