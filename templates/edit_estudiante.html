@@ -1,47 +1,55 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Editar Estudiante</h2>
 
-<form method="POST">
-    <div class="mb-3">
-        <label>Documento</label>
-        <input type="text" name="documento" value="{{ estudiante['documento'] }}" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Nombre Completo</label>
-        <input type="text" name="nombre" value="{{ estudiante['nombre'] }}" class="form-control" required>
-    </div>
-    <div class="row">
-        <div class="col-md-4">
-            <label>Código Estudiantil</label>
-            <input type="text" name="codigo" value="{{ estudiante.get('codigo','') }}" class="form-control">
+<div class="container mt-4">
+    <h2>✏️ Editar Estudiante</h2>
+    
+    <form method="POST">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label>Cédula</label>
+                <input type="text" class="form-control" name="cedula" value="{{ estudiante['cedula'] }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Nombre Completo</label>
+                <input type="text" class="form-control" name="nombre" value="{{ estudiante['nombre'] }}" required>
+            </div>
         </div>
-        <div class="col-md-4">
-            <label>Semestre</label>
-            <input type="number" name="semestre" value="{{ estudiante.get('semestre',1) }}" class="form-control">
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label>Sitio / Grupo</label>
+                <input type="text" class="form-control" name="sitio" value="{{ estudiante['sitio'] }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Nivel de Práctica</label>
+                <select class="form-select" name="nivel_practica" required>
+                    <option value="Práctica Hospitalaria Fisioterapéutica 1" {% if estudiante['nivel_practica'] == 'Práctica Hospitalaria Fisioterapéutica 1' %}selected{% endif %}>Práctica Hospitalaria Fisioterapéutica 1</option>
+                    <option value="Práctica Fisioterapéutica 2" {% if estudiante['nivel_practica'] == 'Práctica Fisioterapéutica 2' %}selected{% endif %}>Práctica Fisioterapéutica 2</option>
+                    <option value="Práctica Fisioterapéutica 3" {% if estudiante['nivel_practica'] == 'Práctica Fisioterapéutica 3' %}selected{% endif %}>Práctica Fisioterapéutica 3</option>
+                    <option value="Práctica Integral" {% if estudiante['nivel_practica'] == 'Práctica Integral' %}selected{% endif %}>Práctica Integral</option>
+                </select>
+            </div>
         </div>
-        <div class="col-md-4">
-            <label>Grupo</label>
-            <input type="text" name="grupo" value="{{ estudiante.get('grupo','') }}" class="form-control">
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label>Programa</label>
+                <input type="text" class="form-control" name="programa" value="{{ estudiante['programa'] }}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Sede</label>
+                <input type="text" class="form-control" name="sede" value="{{ estudiante['sede'] }}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label>Correo</label>
+                <input type="email" class="form-control" name="correo" value="{{ estudiante['correo'] }}">
+            </div>
         </div>
-    </div>
-    <div class="mb-3">
-        <label>Nivel de Práctica</label>
-        <input type="text" name="nivel_practica" value="{{ estudiante.get('nivel_practica','') }}" class="form-control">
-    </div>
-    <div class="mb-3">
-        <label>Dirección</label>
-        <input type="text" name="direccion" value="{{ estudiante.get('direccion','') }}" class="form-control">
-    </div>
-    <div class="mb-3">
-        <label>Celular</label>
-        <input type="text" name="celular" value="{{ estudiante.get('celular','') }}" class="form-control">
-    </div>
-    <div class="mb-3">
-        <label>Correo</label>
-        <input type="email" name="correo" value="{{ estudiante.get('correo','') }}" class="form-control">
-    </div>
-    <button type="submit" class="btn btn-primary">Actualizar Estudiante</button>
-    <a href="/estudiantes" class="btn btn-secondary">Cancelar</a>
-</form>
+
+        <button type="submit" class="btn btn-success">Guardar Cambios</button>
+        <a href="{{ url_for('estudiantes') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+
 {% endblock %}
