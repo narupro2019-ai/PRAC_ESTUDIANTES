@@ -4,6 +4,13 @@
 
 <a href="/export_excel" class="btn btn-success mb-3">📊 Exportar a Excel</a>
 <a href="/new_assignment" class="btn btn-primary mb-3">+ Nueva Asignación</a>
+<a href="{{ url_for('generate_excel_report') }}" class="btn btn-success btn-lg me-2">
+                📊 Generar Reporte Excel Profesional
+            </a>
+            
+            <a href="{{ url_for('generate_pdf_report') }}" class="btn btn-danger btn-lg me-2">
+                📄 Generar Reporte PDF
+            </a>
 
 <h3>Últimas Asignaciones</h3>
 {% if asignaciones %}
