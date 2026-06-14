@@ -373,7 +373,7 @@ def generate_excel_report():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('''
-        SELECT e.nombre as Estudiante, e.cedula as Cedula, e.nivel_practica as Nivel, 
+        SELECT e.nombre as Estudiante, e.cedula as Cedula, e.nivel_practica as Nivel,
                e.grupo, d.nombre as Docente, es.nombre as Escenario, 
                a.rotacion as Rotacion, a.horario, a.fecha_inicio as "Fecha Inicio", 
                a.fecha_fin as "Fecha Fin"
@@ -381,14 +381,14 @@ def generate_excel_report():
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
         JOIN escenarios es ON a.escenario_id = es.id
-        ORDER BY e.nivel_practica, e.grupo, a.rotacion, e.nombre
+        ORDER BY e.nivel_practica, a.rotacion, e.nombre
     ''')
     rows = cur.fetchall()
     cur.close()
     conn.close()
 
     if not rows:
-        flash('No hay datos para generar el reporte', 'warning')
+        flash('No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
 
     columns = ["Estudiante", "Cédula", "Nivel", "Grupo", "Docente", "Escenario", 
@@ -399,12 +399,66 @@ def generate_excel_report():
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Programación')
         ws = writer.sheets['Programación']
-        for col in range(1, len(columns)+1):
+        for col in range(1, len(columns) + 1):
             ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 25
 
     output.seek(0)
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True, download_name='Programacion_Practicas_2026-1.xlsx')
+
+@app.route('/generate_pdf_report')
+def generate_pdf_report():
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import landscape, letter
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        import io
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT e.nombre, e.cedula, e.nivel_practica, d.nombre as docente, 
+                   es.nombre as escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
+            FROM asignaciones a
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            JOIN docentes d ON a.docente_id = d.id
+            JOIN escenarios es ON a.escenario_id = es.id
+            ORDER BY e.nivel_practica, a.rotacion
+        ''')
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
+        elements = []
+        styles = getSampleStyleSheet()
+
+        elements.append(Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", styles['Title']))
+        elements.append(Spacer(1, 20))
+
+        data = [["Estudiante", "Cédula", "Nivel", "Docente", "Escenario", "Rotación", "Horario", "Inicio", "Fin"]]
+        for row in rows:
+            data.append([str(x) for x in row])
+
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        elements.append(table)
+        doc.build(elements)
+
+        buffer.seek(0)
+        return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name='Programacion_Practicas_2026-1.pdf')
+
+    except Exception as e:
+        flash(f'Error generando PDF: {str(e)}', 'danger')
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
