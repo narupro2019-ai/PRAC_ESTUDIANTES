@@ -24,50 +24,45 @@ def init_db():
     cur.execute('''
         CREATE TABLE IF NOT EXISTS estudiantes (
             id SERIAL PRIMARY KEY,
-            documento TEXT UNIQUE NOT NULL,
+            cedula TEXT UNIQUE NOT NULL,
             nombre TEXT NOT NULL,
-            codigo TEXT,
-            semestre INTEGER,
-            grupo TEXT,
-            nivel_practica TEXT,
-            direccion TEXT,
-            celular TEXT,
+            sitio TEXT,                    -- Ej: "PRÁCTICA I A.M (501)"
+            programa TEXT DEFAULT 'Fisioterapia',
+            sede TEXT,
+            nivel_practica TEXT,           -- Ej: 'Práctica Hospitalaria Fisioterapéutica 1'
+            grupo TEXT,                    -- Ej: 501, 601, 701
             correo TEXT,
-            eps TEXT,
-            acudiente TEXT,
             fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS docentes (
             id SERIAL PRIMARY KEY,
-            documento TEXT UNIQUE NOT NULL,
+            documento TEXT UNIQUE,
             nombre TEXT NOT NULL,
             correo TEXT,
-            estado TEXT DEFAULT 'Activo',
-            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            estado TEXT DEFAULT 'Activo'
         );
 
         CREATE TABLE IF NOT EXISTS escenarios (
             id SERIAL PRIMARY KEY,
             nombre TEXT NOT NULL,
-            codigo TEXT,
             direccion TEXT,
             cupos INTEGER DEFAULT 10,
-            estado TEXT DEFAULT 'Activo',
-            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            estado TEXT DEFAULT 'Activo'
         );
 
         CREATE TABLE IF NOT EXISTS asignaciones (
             id SERIAL PRIMARY KEY,
             estudiante_id INTEGER REFERENCES estudiantes(id) ON DELETE CASCADE,
-            docente_id INTEGER REFERENCES docentes(id) ON DELETE CASCADE,
-            escenario_id INTEGER REFERENCES escenarios(id) ON DELETE CASCADE,
-            rotacion INTEGER NOT NULL CHECK (rotacion BETWEEN 1 AND 4),
-            horario TEXT NOT NULL,
-            fecha_inicio DATE NOT NULL,
-            fecha_fin DATE NOT NULL,
-            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(estudiante_id, rotacion)
+            docente_id INTEGER REFERENCES docentes(id) ON DELETE SET NULL,
+            escenario_id INTEGER REFERENCES escenarios(id) ON DELETE SET NULL,
+            nivel_practica TEXT NOT NULL,      -- Nivel específico
+            grupo TEXT,
+            rotacion INTEGER NOT NULL,
+            horario TEXT,
+            fecha_inicio DATE,
+            fecha_fin DATE,
+            fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     ''')
     conn.commit()
