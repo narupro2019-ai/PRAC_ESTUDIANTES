@@ -691,76 +691,69 @@ def generate_excel_report():
 @app.route('/generate_pdf_report')
 def generate_pdf_report():
     try:
-        styles   = getSampleStyleSheet()
-        PAGE_W   = landscape(letter)[0] - 2 * cm
-        buffer   = io.BytesIO()
-        doc      = SimpleDocTemplate(buffer, pagesize=landscape(letter),
-                                     leftMargin=1*cm, rightMargin=1*cm,
-                                     topMargin=1.2*cm, bottomMargin=1.2*cm)
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import landscape, letter
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
+        import pandas as pd
+        import io
+
+        # ✅ MISMA LÓGICA QUE EL EXCEL
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT 
+                e.nombre AS "Estudiante",
+                e.cedula AS "Documento",
+                es.nombre AS "Escenario",
+                d.nombre AS "Docente",
+                a.rotacion AS "Rotación",
+                a.horario AS "Horario",
+                a.fecha_inicio AS "Fecha Inicio",
+                a.fecha_fin AS "Fecha Fin",
+                es.direccion AS "Dirección"
+            FROM asignaciones a
+            JOIN estudiantes e ON a.estudiante_id = e.id
+            JOIN docentes d ON a.docente_id = d.id
+            JOIN escenarios es ON a.escenario_id = es.id
+            ORDER BY e.nombre ASC, a.rotacion ASC
+        ''')
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+
+        if not rows:
+            flash('⚠️ No hay asignaciones para exportar', 'warning')
+            return redirect(url_for('index'))
+
+        columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación",
+                   "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+        df = pd.DataFrame(rows, columns=columns)
+
+        for col in ["Fecha Inicio", "Fecha Fin"]:
+            df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime("%d/%m/%Y").fillna("")
+
+        AZUL_HEADER   = colors.HexColor('#003366')
+        AZUL_ROTACION = colors.HexColor('#1F4E79')
+        GRIS_ALTERNO  = colors.HexColor('#F2F2F2')
+        AZUL_TITULO   = colors.HexColor('#2E75B6')
+        BLANCO        = colors.white
+
+        PAGE_W = landscape(letter)[0] - 2 * cm
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter),
+                                leftMargin=1*cm, rightMargin=1*cm,
+                                topMargin=1.2*cm, bottomMargin=1.2*cm)
+        styles = getSampleStyleSheet()
         elements = []
 
-        title_style = ParagraphStyle('main_title', parent=styles['Title'],
+        title_style = ParagraphStyle('title', parent=styles['Title'],
                                      fontName='Helvetica-Bold', fontSize=14,
-                                     textColor=_AZUL_TITULO, alignment=TA_CENTER,
-                                     spaceAfter=4)
-        sheet_title_style = ParagraphStyle('sheet_title', parent=styles['Normal'],
-                                           fontName='Helvetica-Bold', fontSize=11,
-                                           textColor=_BLANCO, alignment=TA_CENTER)
-        header_style = ParagraphStyle('header_info', parent=styles['Normal'],
-                                      fontName='Helvetica', fontSize=8,
-                                      textColor=colors.HexColor('#404040'),
-                                      alignment=TA_CENTER)
-
-        elements.append(Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", title_style))
-        elements.append(HRFlowable(width=PAGE_W, thickness=2, color=_AZUL_TITULO))
-        elements.append(Spacer(1, 8))
-
-        for fname in EXCEL_FILES:
-            fpath = os.path.join(EXCEL_DIR, fname)
-            if not os.path.exists(fpath):
-                continue                                   # silencia xlsx faltantes
-
-            wb = openpyxl.load_workbook(fpath)
-            for ws in wb.worksheets:
-                if ws.title.lower() == 'hoja2':
-                    continue                               # hoja auxiliar, saltar
-
-                # Banda de título de grupo
-                sheet_tbl = Table([[Paragraph(ws.title, sheet_title_style)]],
-                                  colWidths=[PAGE_W])
-                sheet_tbl.setStyle(TableStyle([
-                    ('BACKGROUND',    (0, 0), (-1, -1), _AZUL_TITULO),
-                    ('TOPPADDING',    (0, 0), (-1, -1), 6),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                ]))
-                elements.append(sheet_tbl)
-                elements.append(Spacer(1, 4))
-
-                header_lines, rotaciones = _parse_sheet(ws)
-                for line in header_lines:
-                    if line.strip():
-                        elements.append(Paragraph(line, header_style))
-                elements.append(Spacer(1, 6))
-
-                for rot in rotaciones:
-                    elements += _build_rotation_table(rot, styles)
-
-                elements.append(Spacer(1, 14))
-                elements.append(HRFlowable(width=PAGE_W, thickness=1,
-                                           color=colors.HexColor('#BFBFBF'), dash=(4, 2)))
-                elements.append(Spacer(1, 8))
-
-        doc.build(elements)
-        buffer.seek(0)
-
-        return send_file(buffer, mimetype='application/pdf',
-                         as_attachment=True,
-                         download_name='Programacion_Practicas_2026-1.pdf')
-
-    except Exception as e:
-        flash(f'Error generando PDF: {str(e)}', 'danger')
-        return redirect(url_for('index'))
-
+                                     textColor=AZUL_TITULO, alignment=TA_CENTER, spaceAfter=6)
+        header_cell = ParagraphStyle('hcell', parent=styles['Normal'],
+                                     fontName='Helvetica-Bold',
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
