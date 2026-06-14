@@ -932,6 +932,32 @@ def auto_assignment():
                            escenarios=escenarios)
 
 
+@app.route('/delete_all_assignments')
+def delete_all_assignments():
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Eliminar todas las asignaciones
+        cur.execute("DELETE FROM asignaciones")
+        conn.commit()
+        
+        flash('🗑️ Todas las asignaciones fueron eliminadas correctamente', 'danger')
+        return redirect(url_for('asignaciones_list'))
+        
+    except Exception as e:
+        flash(f'❌ Error al eliminar todas las asignaciones: {str(e)}', 'danger')
+        if conn:
+            conn.rollback()
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
 
         
 if __name__ == '__main__':
