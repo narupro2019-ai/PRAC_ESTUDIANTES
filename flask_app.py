@@ -586,14 +586,15 @@ def generate_pdf_report():
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import landscape, letter
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.lib.enums import TA_CENTER, TA_LEFT
         import pandas as pd
         import io
 
         # ✅ MISMA LÓGICA QUE EL EXCEL
         conn = get_db_connection()
         cur = conn.cursor()
-
         cur.execute('''
             SELECT 
                 e.nombre AS "Estudiante",
@@ -611,7 +612,6 @@ def generate_pdf_report():
             JOIN escenarios es ON a.escenario_id = es.id
             ORDER BY e.nombre ASC, a.rotacion ASC
         ''')
-
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -620,64 +620,128 @@ def generate_pdf_report():
             flash('⚠️ No hay asignaciones para exportar', 'warning')
             return redirect(url_for('index'))
 
-        # ✅ USAR PANDAS IGUAL QUE EL EXCEL PARA PROCESAR LOS DATOS
+        # ✅ MISMA LÓGICA QUE EL EXCEL
         columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación",
                    "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
-
         df = pd.DataFrame(rows, columns=columns)
-
-        # Formatear fechas igual que el excel las interpreta
-        import datetime
         for col in ["Fecha Inicio", "Fecha Fin"]:
             df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime("%d/%m/%Y").fillna("")
 
-        # ✅ CONSTRUIR PDF CON LOS DATOS DEL DATAFRAME
+        # ── Colores ──
+        AZUL_HEADER   = colors.HexColor('#003366')
+        AZUL_ROTACION = colors.HexColor('#1F4E79')
+        VERDE_DOCENTE = colors.HexColor('#E2EFDA')
+        GRIS_ALTERNO  = colors.HexColor('#F2F2F2')
+        AZUL_TITULO   = colors.HexColor('#2E75B6')
+        BLANCO        = colors.white
+
+        PAGE_W = landscape(letter)[0] - 2*cm
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=landscape(letter),
-            leftMargin=20,
-            rightMargin=20,
-            topMargin=30,
-            bottomMargin=30
-        )
-        elements = []
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter),
+                                leftMargin=1*cm, rightMargin=1*cm,
+                                topMargin=1.2*cm, bottomMargin=1.2*cm)
         styles = getSampleStyleSheet()
+        elements = []
 
-        elements.append(Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", styles['Title']))
-        elements.append(Spacer(1, 20))
+        # ── Estilos ──
+        title_s = ParagraphStyle('t', parent=styles['Title'], fontName='Helvetica-Bold',
+                                 fontSize=14, textColor=AZUL_TITULO, alignment=TA_CENTER, spaceAfter=4)
+        rot_s   = ParagraphStyle('r', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                 fontSize=9, textColor=BLANCO, alignment=TA_LEFT)
+        esc_s   = ParagraphStyle('e', parent=styles['Normal'], fontName='Helvetica-Bold',
+                                 fontSize=8, textColor=BLANCO, alignment=TA_CENTER)
+        doc_s   = ParagraphStyle('d', parent=styles['Normal'], fontName='Helvetica-BoldOblique',
+                                 fontSize=7.5, textColor=colors.HexColor('#1F4E79'), alignment=TA_CENTER)
+        est_s   = ParagraphStyle('s', parent=styles['Normal'], fontName='Helvetica',
+                                 fontSize=7.5, alignment=TA_CENTER)
 
-        # ✅ ENCABEZADOS + FILAS DESDE EL DATAFRAME (no desde rows directamente)
-        data = [columns]  # Fila de encabezados
-        for _, fila in df.iterrows():
-            data.append([str(val) if val else "" for val in fila])
+        elements.append(Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", title_s))
+        elements.append(Spacer(1, 10))
 
-        # Anchos de columna proporcionales al contenido
-        col_widths = [120, 80, 100, 100, 55, 55, 65, 65, 110]
+        # ── Agrupar por Horario (grupo AM/PM) y luego por Rotación ──
+        for horario, df_horario in df.groupby("Horario", sort=True):
 
-        table = Table(data, colWidths=col_widths, repeatRows=1)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 11),
-            ('FONTSIZE', (0, 1), (-1, -1), 9),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),  # filas alternas
-        ]))
+            # Banda de grupo (AM / PM)
+            grupo_tbl = Table([[Paragraph(f"Horario: {horario}", rot_s)]], colWidths=[PAGE_W])
+            grupo_tbl.setStyle(TableStyle([
+                ('BACKGROUND',    (0,0), (-1,-1), AZUL_TITULO),
+                ('TOPPADDING',    (0,0), (-1,-1), 5),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+                ('LEFTPADDING',   (0,0), (-1,-1), 8),
+            ]))
+            elements.append(grupo_tbl)
+            elements.append(Spacer(1, 6))
 
-        elements.append(table)
+            for rotacion, df_rot in df_horario.groupby("Rotación", sort=True):
+                fecha_ini = df_rot["Fecha Inicio"].iloc[0]
+                fecha_fin = df_rot["Fecha Fin"].iloc[0]
+
+                # Escenarios en el orden en que aparecen
+                escenarios_orden = list(dict.fromkeys(df_rot["Escenario"].tolist()))
+
+                esc_data = {}
+                for esc in escenarios_orden:
+                    sub = df_rot[df_rot["Escenario"] == esc]
+                    esc_data[esc] = {
+                        "docente":     sub["Docente"].iloc[0],
+                        "estudiantes": sub["Estudiante"].tolist()
+                    }
+
+                n_cols = len(escenarios_orden)
+                col_w  = PAGE_W / n_cols
+
+                # Banda de rotación con fechas
+                titulo_rot = f"Rotación {rotacion}:   {fecha_ini}  →  {fecha_fin}"
+                rot_tbl = Table([[Paragraph(titulo_rot, rot_s)]], colWidths=[PAGE_W])
+                rot_tbl.setStyle(TableStyle([
+                    ('BACKGROUND',    (0,0), (-1,-1), AZUL_ROTACION),
+                    ('TOPPADDING',    (0,0), (-1,-1), 5),
+                    ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+                    ('LEFTPADDING',   (0,0), (-1,-1), 8),
+                ]))
+                elements.append(rot_tbl)
+
+                # Tabla: escenarios en columnas, estudiantes en filas
+                header_row  = [Paragraph(e, esc_s) for e in escenarios_orden]
+                docente_row = [Paragraph(esc_data[e]["docente"], doc_s) for e in escenarios_orden]
+
+                max_est = max(len(esc_data[e]["estudiantes"]) for e in escenarios_orden)
+                student_rows = []
+                for i in range(max_est):
+                    student_rows.append([
+                        Paragraph(
+                            esc_data[e]["estudiantes"][i] if i < len(esc_data[e]["estudiantes"]) else "",
+                            est_s
+                        )
+                        for e in escenarios_orden
+                    ])
+
+                data_tbl = [header_row, docente_row] + student_rows
+                ts = [
+                    ('BACKGROUND', (0,0), (-1,0), AZUL_HEADER),
+                    ('TEXTCOLOR',  (0,0), (-1,0), BLANCO),
+                    ('BACKGROUND', (0,1), (-1,1), VERDE_DOCENTE),
+                    ('GRID',    (0,0), (-1,-1), 0.5, colors.HexColor('#BFBFBF')),
+                    ('ALIGN',   (0,0), (-1,-1), 'CENTER'),
+                    ('VALIGN',  (0,0), (-1,-1), 'MIDDLE'),
+                    ('TOPPADDING',    (0,0), (-1,-1), 3),
+                    ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+                ]
+                for ri in range(2, len(data_tbl)):
+                    ts.append(('BACKGROUND', (0,ri), (-1,ri),
+                               GRIS_ALTERNO if ri % 2 == 0 else BLANCO))
+
+                tbl = Table(data_tbl, colWidths=[col_w]*n_cols)
+                tbl.setStyle(TableStyle(ts))
+                elements.append(tbl)
+                elements.append(Spacer(1, 10))
+
         doc.build(elements)
         buffer.seek(0)
 
-        return send_file(
-            buffer,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name='Programacion_Practicas_2026-1.pdf'
-        )
+        return send_file(buffer, mimetype='application/pdf',
+                         as_attachment=True,
+                         download_name='Programacion_Practicas_2026-1.pdf')
 
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
