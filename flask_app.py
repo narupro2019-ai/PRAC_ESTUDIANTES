@@ -530,8 +530,11 @@ def generate_excel_report():
     conn.close()
 
     if not rows:
-        flash('No hay asignaciones para exportar', 'warning')
+        flash('⚠️ No hay asignaciones para exportar', 'warning')
         return redirect(url_for('index'))
+
+    import pandas as pd
+    import io
 
     columns = ["Estudiante", "Cédula", "Nivel", "Grupo", "Docente", "Escenario", 
                "Rotación", "Horario", "Fecha Inicio", "Fecha Fin"]
@@ -539,14 +542,25 @@ def generate_excel_report():
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Programación')
-        ws = writer.sheets['Programación']
+        df.to_excel(writer, index=False, sheet_name='Programación de Prácticas')
+        ws = writer.sheets['Programación de Prácticas']
+
+        # Ajustar ancho de columnas
         for col in range(1, len(columns) + 1):
-            ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 25
+            ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 20
+
+        # Formato de fechas
+        date_format = 'DD/MM/YYYY'
+        for row in range(2, len(rows) + 2):
+            ws.cell(row=row, column=9).number_format = date_format  # Fecha Inicio
+            ws.cell(row=row, column=10).number_format = date_format  # Fecha Fin
 
     output.seek(0)
-    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                     as_attachment=True, download_name='Programacion_Practicas_2026-1.xlsx')
+    return send_file(output,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     as_attachment=True,
+                     download_name='Programacion_Practicas_2026-1.xlsx')
+
 
 @app.route('/generate_pdf_report')
 def generate_pdf_report():
@@ -560,13 +574,13 @@ def generate_pdf_report():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute('''
-            SELECT e.nombre, e.cedula, e.nivel_practica, d.nombre as docente, 
-                   es.nombre as escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
+            SELECT e.nombre, e.cedula, e.nivel_practica, d.nombre as Docente, 
+                   es.nombre as Escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
             FROM asignaciones a
             JOIN estudiantes e ON a.estudiante_id = e.id
             JOIN docentes d ON a.docente_id = d.id
             JOIN escenarios es ON a.escenario_id = es.id
-            ORDER BY e.nivel_practica, a.rotacion
+            ORDER BY e.nivel_practica, a.rotacion, e.nombre
         ''')
         rows = cur.fetchall()
         cur.close()
@@ -580,27 +594,40 @@ def generate_pdf_report():
         elements.append(Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", styles['Title']))
         elements.append(Spacer(1, 20))
 
-        data = [["Estudiante", "Cédula", "Nivel", "Docente", "Escenario", "Rotación", "Horario", "Inicio", "Fin"]]
+        # Encabezados
+        data = [["Estudiante", "Cédula", "Nivel", "Docente", "Escenario", 
+                 "Rotación", "Horario", "Inicio", "Fin"]]
         for row in rows:
-            data.append([str(x) for x in row])
+            # Convertir fechas a string dd/mm/yyyy
+            fila = []
+            for idx, val in enumerate(row):
+                if idx in (7, 8) and val is not None:  # columnas fecha_inicio y fecha_fin
+                    fila.append(val.strftime("%d/%m/%Y"))
+                else:
+                    fila.append(str(val))
+            data.append(fila)
 
         table = Table(data, repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold')
         ]))
 
         elements.append(table)
         doc.build(elements)
 
         buffer.seek(0)
-        return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name='Programacion_Practicas_2026-1.pdf')
+        return send_file(buffer,
+                         mimetype='application/pdf',
+                         as_attachment=True,
+                         download_name='Programacion_Practicas_2026-1.pdf')
 
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
         return redirect(url_for('index'))
-
+        
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
