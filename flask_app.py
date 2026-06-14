@@ -422,7 +422,7 @@ def edit_assignment(id):
                 conn.close()
                 return redirect(url_for('edit_assignment', id=id))
 
-            # Actualización de la asignación
+            # ✅ Actualización de la asignación seleccionada
             cur.execute('''
                 UPDATE asignaciones 
                 SET estudiante_id = %s,
@@ -435,9 +435,18 @@ def edit_assignment(id):
                 WHERE id = %s
             ''', (estudiante_id, docente_id, escenario_id, rotacion, 
                   horario, fecha_inicio, fecha_fin, id))
-            
+
+            # ✅ Sincronizar fechas y horario en toda la rotación
+            cur.execute('''
+                UPDATE asignaciones
+                SET fecha_inicio = %s,
+                    fecha_fin = %s,
+                    horario = %s
+                WHERE rotacion = %s
+            ''', (fecha_inicio, fecha_fin, horario, rotacion))
+
             conn.commit()
-            flash('✅ Asignación actualizada correctamente', 'success')
+            flash(f'✅ Asignación actualizada y fechas/horario sincronizados en Rotación {rotacion}', 'success')
             return redirect(url_for('asignaciones_list'))
             
         except Exception as e:
@@ -476,6 +485,7 @@ def edit_assignment(id):
                          estudiantes=estudiantes, 
                          docentes=docentes, 
                          escenarios=escenarios)
+
 
 
 
