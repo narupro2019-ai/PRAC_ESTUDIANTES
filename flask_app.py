@@ -302,15 +302,23 @@ def delete_escenario(id):
     flash('🗑️ Escenario eliminado', 'danger')
     return redirect(url_for('escenarios'))
 
-# ==================== ASIGNACIONES ====================
+# ==================== ASIGNACIONES - CRUD COMPLETO ====================
+
 @app.route('/asignaciones')
 def asignaciones_list():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('''
-        SELECT a.id, e.nombre as estudiante, e.cedula, d.nombre as docente, 
-               es.nombre as escenario, a.rotacion, a.horario, 
-               a.fecha_inicio, a.fecha_fin
+        SELECT 
+            a.id, 
+            e.nombre as estudiante, 
+            e.cedula,
+            d.nombre as docente, 
+            es.nombre as escenario, 
+            a.rotacion, 
+            a.horario, 
+            a.fecha_inicio, 
+            a.fecha_fin
         FROM asignaciones a
         JOIN estudiantes e ON a.estudiante_id = e.id
         JOIN docentes d ON a.docente_id = d.id
@@ -322,41 +330,53 @@ def asignaciones_list():
     conn.close()
     return render_template('asignaciones.html', asignaciones=asignaciones)
 
+
 @app.route('/new_assignment', methods=['GET', 'POST'])
 def new_assignment():
     conn = get_db_connection()
     cur = conn.cursor()
+    
     if request.method == 'POST':
-        estudiante_id = int(request.form['estudiante_id'])
-        docente_id = int(request.form['docente_id'])
-        escenario_id = int(request.form['escenario_id'])
-        rotacion = int(request.form['rotacion'])
-        horario = request.form.get('horario', '')
-        fecha_inicio = request.form['fecha_inicio']
-        fecha_fin = request.form['fecha_fin']
+        try:
+            estudiante_id = int(request.form['estudiante_id'])
+            docente_id = int(request.form['docente_id'])
+            escenario_id = int(request.form['escenario_id'])
+            rotacion = int(request.form['rotacion'])
+            horario = request.form.get('horario', '').strip()
+            fecha_inicio = request.form['fecha_inicio']
+            fecha_fin = request.form['fecha_fin']
 
-        # Validación de conflicto
-        cur.execute('''
-            SELECT COUNT(*) FROM asignaciones 
-            WHERE estudiante_id = %s 
-            AND ((fecha_inicio <= %s AND fecha_fin >= %s) OR (fecha_inicio <= %s AND fecha_fin >= %s))
-        ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
-        
-        if cur.fetchone()[0] > 0:
-            flash('❌ Conflicto de horario/fechas con otra asignación del estudiante', 'danger')
+            # Validación de conflicto de horario y fechas
+            cur.execute('''
+                SELECT COUNT(*) FROM asignaciones 
+                WHERE estudiante_id = %s 
+                AND ((fecha_inicio <= %s AND fecha_fin >= %s) 
+                  OR (fecha_inicio <= %s AND fecha_fin >= %s))
+            ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
+            
+            if cur.fetchone()[0] > 0:
+                flash('❌ Conflicto: El estudiante ya tiene una asignación en ese horario y rango de fechas.', 'danger')
+                conn.close()
+                return redirect(url_for('new_assignment'))
+
+            cur.execute('''
+                INSERT INTO asignaciones 
+                (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin))
+            
+            conn.commit()
+            flash('✅ Asignación creada correctamente', 'success')
+            return redirect(url_for('asignaciones_list'))
+            
+        except Exception as e:
+            flash('Error al guardar la asignación', 'danger')
+            conn.rollback()
+        finally:
+            cur.close()
             conn.close()
-            return redirect(url_for('new_assignment'))
 
-        cur.execute('''
-            INSERT INTO asignaciones 
-            (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin))
-        conn.commit()
-        flash('✅ Asignación creada correctamente', 'success')
-        return redirect(url_for('index'))
-
-    # GET
+    # GET - Cargar listas para los select
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
@@ -365,7 +385,78 @@ def new_assignment():
     escenarios = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('new_assignment.html', estudiantes=estudiantes, docentes=docentes, escenarios=escenarios)
+    
+    return render_template('new_assignment.html', 
+                         estudiantes=estudiantes, 
+                         docentes=docentes, 
+                         escenarios=escenarios)
+
+
+@app.route('/edit_assignment/<int:id>', methods=['GET', 'POST'])
+def edit_assignment(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    if request.method == 'POST':
+        try:
+            estudiante_id = int(request.form['estudiante_id'])
+            docente_id = int(request.form['docente_id'])
+            escenario_id = int(request.form['escenario_id'])
+            rotacion = int(request.form['rotacion'])
+            horario = request.form.get('horario', '').strip()
+            fecha_inicio = request.form['fecha_inicio']
+            fecha_fin = request.form['fecha_fin']
+
+            cur.execute('''
+                UPDATE asignaciones 
+                SET estudiante_id=%s, docente_id=%s, escenario_id=%s, 
+                    rotacion=%s, horario=%s, fecha_inicio=%s, fecha_fin=%s
+                WHERE id=%s
+            ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, 
+                  fecha_inicio, fecha_fin, id))
+            
+            conn.commit()
+            flash('✅ Asignación actualizada correctamente', 'success')
+            return redirect(url_for('asignaciones_list'))
+            
+        except Exception:
+            flash('Error al actualizar la asignación', 'danger')
+            conn.rollback()
+        finally:
+            cur.close()
+            conn.close()
+
+    # GET - Cargar datos para editar
+    cur.execute("SELECT * FROM asignaciones WHERE id = %s", (id,))
+    asignacion = cur.fetchone()
+    
+    cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
+    estudiantes = cur.fetchall()
+    cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
+    docentes = cur.fetchall()
+    cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
+    escenarios = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return render_template('edit_assignment.html', 
+                         asignacion=asignacion, 
+                         estudiantes=estudiantes, 
+                         docentes=docentes, 
+                         escenarios=escenarios)
+
+
+@app.route('/delete_assignment/<int:id>')
+def delete_assignment(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM asignaciones WHERE id = %s", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash('🗑️ Asignación eliminada correctamente', 'danger')
+    return redirect(url_for('asignaciones_list'))
 
 # ==================== REPORTES ====================
 @app.route('/generate_excel_report')
