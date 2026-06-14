@@ -1,21 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Editar Docente</h2>
 
-<form method="POST">
-    <div class="mb-3">
-        <label>Documento</label>
-        <input type="text" name="documento" value="{{ docente['documento'] }}" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Nombre Completo</label>
-        <input type="text" name="nombre" value="{{ docente['nombre'] }}" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label>Correo</label>
-        <input type="email" name="correo" value="{{ docente.get('correo', '') }}" class="form-control">
-    </div>
-    <button type="submit" class="btn btn-primary">Actualizar Docente</button>
-    <a href="/docentes" class="btn btn-secondary">Cancelar</a>
-</form>
+<div class="container mt-4">
+    <h2>✏️ Editar Docente</h2>
+    
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Número de Documento</label>
+            <input type="text" class="form-control" name="documento" value="{{ docente['documento'] }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Nombre Completo</label>
+            <input type="text" class="form-control" name="nombre" value="{{ docente['nombre'] }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Correo Electrónico</label>
+            <input type="email" class="form-control" name="correo" value="{{ docente['correo'] }}">
+        </div>
+
+        <button type="submit" class="btn btn-success btn-lg">Guardar Cambios</button>
+        <a href="{{ url_for('docentes') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+    </form>
+</div>
+
 {% endblock %}
