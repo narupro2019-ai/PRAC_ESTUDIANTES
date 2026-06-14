@@ -25,18 +25,6 @@
             <a href="{{ url_for('generate_pdf_report') }}" class="btn btn-danger btn-lg mx-2">
                 📄 Exportar PDF
             </a>
-            <form method="GET" action="{{ url_for('edit_rotation', rotacion=1) }}" class="d-inline-block mx-2">
-            <div class="input-group">
-                <select class="form-select" name="rotacion" onchange="this.form.action='{{ url_for('edit_rotation', rotacion='') }}' + this.value; this.form.submit();">
-                    <option value="">Seleccionar Rotación...</option>
-                    {% for a in asignaciones|map(attribute='rotacion')|unique %}
-                    <option value="{{ a }}">Rotación {{ a }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-warning btn-lg">✏️ Editar Rotación</button>
-            </div>
-        </form>
-
         </div>
     </div>
 
