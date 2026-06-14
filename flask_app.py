@@ -337,29 +337,29 @@ def new_assignment():
         conn = None
         cur = None
         try:
-            # Validación explícita de campos
-            if not request.form.get('estudiante_id'):
-                flash('❌ Debe seleccionar un estudiante', 'danger')
-                return redirect(url_for('new_assignment'))
-            if not request.form.get('docente_id'):
-                flash('❌ Debe seleccionar un docente', 'danger')
-                return redirect(url_for('new_assignment'))
-            if not request.form.get('escenario_id'):
-                flash('❌ Debe seleccionar un escenario', 'danger')
+            # Validación explícita de campos antes de convertir a int
+            estudiante_id = request.form.get('estudiante_id')
+            docente_id = request.form.get('docente_id')
+            escenario_id = request.form.get('escenario_id')
+            rotacion = request.form.get('rotacion')
+            horario = request.form.get('horario', '').strip()
+            fecha_inicio = request.form.get('fecha_inicio')
+            fecha_fin = request.form.get('fecha_fin')
+
+            if not estudiante_id or not docente_id or not escenario_id or not rotacion:
+                flash('❌ Debe seleccionar estudiante, docente, escenario y rotación', 'danger')
                 return redirect(url_for('new_assignment'))
 
-            estudiante_id = int(request.form['estudiante_id'])
-            docente_id = int(request.form['docente_id'])
-            escenario_id = int(request.form['escenario_id'])
-            rotacion = int(request.form['rotacion'])
-            horario = request.form.get('horario', '').strip()
-            fecha_inicio = request.form['fecha_inicio']
-            fecha_fin = request.form['fecha_fin']
+            # Conversión segura a enteros
+            estudiante_id = int(estudiante_id)
+            docente_id = int(docente_id)
+            escenario_id = int(escenario_id)
+            rotacion = int(rotacion)
 
             conn = get_db_connection()
             cur = conn.cursor()
 
-            # Validación de conflicto
+            # Validación de conflicto de fechas
             cur.execute('''
                 SELECT COUNT(*) FROM asignaciones 
                 WHERE estudiante_id = %s 
@@ -368,10 +368,10 @@ def new_assignment():
             ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
             
             if cur.fetchone()[0] > 0:
-                flash('❌ Conflicto: El estudiante ya tiene asignación en ese horario y fechas.', 'danger')
+                flash('❌ Conflicto: El estudiante ya tiene asignación en ese rango de fechas.', 'danger')
                 return redirect(url_for('new_assignment'))
 
-            # Insertar
+            # Inserción en la tabla
             cur.execute('''
                 INSERT INTO asignaciones 
                 (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
@@ -383,7 +383,7 @@ def new_assignment():
             return redirect(url_for('asignaciones_list'))
 
         except ValueError:
-            flash('❌ Error: Verifique que haya seleccionado estudiante, docente, escenario y rotación', 'danger')
+            flash('❌ Error: Verifique que los campos seleccionados sean válidos', 'danger')
         except Exception as e:
             flash(f'❌ Error al guardar: {str(e)}', 'danger')
             if conn:
