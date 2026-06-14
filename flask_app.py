@@ -570,6 +570,7 @@ def generate_pdf_report():
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet
         import io
+        import datetime
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -597,12 +598,16 @@ def generate_pdf_report():
         # Encabezados
         data = [["Estudiante", "Cédula", "Nivel", "Docente", "Escenario", 
                  "Rotación", "Horario", "Inicio", "Fin"]]
+
         for row in rows:
-            # Convertir fechas a string dd/mm/yyyy
             fila = []
             for idx, val in enumerate(row):
-                if idx in (7, 8) and val is not None:  # columnas fecha_inicio y fecha_fin
-                    fila.append(val.strftime("%d/%m/%Y"))
+                # columnas 7 y 8 son fecha_inicio y fecha_fin
+                if idx in (7, 8) and val is not None:
+                    if isinstance(val, (datetime.date, datetime.datetime)):
+                        fila.append(val.strftime("%d/%m/%Y"))
+                    else:
+                        fila.append(str(val))  # ya es string
                 else:
                     fila.append(str(val))
             data.append(fila)
@@ -628,6 +633,7 @@ def generate_pdf_report():
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
         return redirect(url_for('index'))
+
         
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
