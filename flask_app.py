@@ -963,6 +963,50 @@ def delete_all_assignments():
             conn.close()
 
 
+@app.route('/edit_rotation/<int:rotacion>', methods=['GET', 'POST'])
+def edit_rotation(rotacion):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        try:
+            nuevo_horario = request.form['horario'].strip()
+            nueva_fecha_inicio = request.form['fecha_inicio']
+            nueva_fecha_fin = request.form['fecha_fin']
+
+            # Actualizar todas las asignaciones de esa rotación
+            cur.execute('''
+                UPDATE asignaciones
+                SET horario = %s,
+                    fecha_inicio = %s,
+                    fecha_fin = %s
+                WHERE rotacion = %s
+            ''', (nuevo_horario, nueva_fecha_inicio, nueva_fecha_fin, rotacion))
+
+            conn.commit()
+            flash(f'✅ Rotación {rotacion} actualizada correctamente', 'success')
+            return redirect(url_for('asignaciones_list'))
+
+        except Exception as e:
+            flash(f'❌ Error al actualizar la rotación: {str(e)}', 'danger')
+            conn.rollback()
+        finally:
+            cur.close()
+            conn.close()
+
+    # GET - obtener datos actuales de la rotación
+    cur.execute('SELECT DISTINCT horario, fecha_inicio, fecha_fin FROM asignaciones WHERE rotacion = %s', (rotacion,))
+    datos = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not datos:
+        flash('⚠️ Rotación no encontrada', 'warning')
+        return redirect(url_for('asignaciones_list'))
+
+    return render_template('edit_rotation.html', rotacion=rotacion, datos=datos)
+
+
 
         
 if __name__ == '__main__':
