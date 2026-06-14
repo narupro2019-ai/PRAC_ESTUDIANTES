@@ -430,31 +430,48 @@ def edit_assignment(id):
 
             cur.execute('''
                 UPDATE asignaciones 
-                SET estudiante_id=%s, docente_id=%s, escenario_id=%s, 
-                    rotacion=%s, horario=%s, fecha_inicio=%s, fecha_fin=%s
-                WHERE id=%s
-            ''', (estudiante_id, docente_id, escenario_id, rotacion, horario, 
-                  fecha_inicio, fecha_fin, id))
+                SET estudiante_id = %s,
+                    docente_id = %s,
+                    escenario_id = %s,
+                    rotacion = %s,
+                    horario = %s,
+                    fecha_inicio = %s,
+                    fecha_fin = %s
+                WHERE id = %s
+            ''', (estudiante_id, docente_id, escenario_id, rotacion, 
+                  horario, fecha_inicio, fecha_fin, id))
             
             conn.commit()
             flash('✅ Asignación actualizada correctamente', 'success')
             return redirect(url_for('asignaciones_list'))
             
-        except Exception:
-            flash('Error al actualizar la asignación', 'danger')
+        except ValueError:
+            flash('❌ Error: Verifique que todos los campos estén seleccionados', 'danger')
+        except Exception as e:
+            flash(f'❌ Error al actualizar: {str(e)}', 'danger')
             conn.rollback()
         finally:
             cur.close()
             conn.close()
 
-    # GET - Cargar datos para editar
-    cur.execute("SELECT * FROM asignaciones WHERE id = %s", (id,))
+    # ==================== GET - Cargar datos para editar ====================
+    # Cargar la asignación actual
+    cur.execute('''
+        SELECT * FROM asignaciones WHERE id = %s
+    ''', (id,))
     asignacion = cur.fetchone()
-    
+
+    if not asignacion:
+        flash('Asignación no encontrada', 'danger')
+        return redirect(url_for('asignaciones_list'))
+
+    # Cargar listas para los selects
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
+    
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
     docentes = cur.fetchall()
+    
     cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
     escenarios = cur.fetchall()
     
