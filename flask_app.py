@@ -333,10 +333,9 @@ def asignaciones_list():
 
 @app.route('/new_assignment', methods=['GET', 'POST'])
 def new_assignment():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
     if request.method == 'POST':
+        conn = get_db_connection()
+        cur = conn.cursor()
         try:
             estudiante_id = int(request.form['estudiante_id'])
             docente_id = int(request.form['docente_id'])
@@ -355,10 +354,10 @@ def new_assignment():
             ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
             
             if cur.fetchone()[0] > 0:
-                flash('❌ Conflicto: El estudiante ya tiene una asignación en ese horario y rango de fechas.', 'danger')
+                flash('❌ Conflicto: El estudiante ya tiene asignación en ese horario y fechas.', 'danger')
                 return redirect(url_for('new_assignment'))
 
-            # Insertar asignación
+            # Insertar
             cur.execute('''
                 INSERT INTO asignaciones 
                 (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
@@ -368,25 +367,26 @@ def new_assignment():
             conn.commit()
             flash('✅ Asignación creada correctamente', 'success')
             return redirect(url_for('asignaciones_list'))
-            
+
+        except ValueError:
+            flash('❌ Error: Verifique que todos los campos estén completos', 'danger')
+        except psycopg2.IntegrityError:
+            flash('❌ Error de integridad en la base de datos', 'danger')
         except Exception as e:
-            flash('Error al guardar la asignación', 'danger')
+            flash(f'❌ Error inesperado: {str(e)}', 'danger')   # ← Esto te mostrará el error real
             conn.rollback()
         finally:
             cur.close()
             conn.close()
 
-    # ==================== GET (Cargar formulario) ====================
-    # Nueva conexión para GET
+    # GET - Cargar formulario
     conn = get_db_connection()
     cur = conn.cursor()
     
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
-    
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
     docentes = cur.fetchall()
-    
     cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
     escenarios = cur.fetchall()
     
