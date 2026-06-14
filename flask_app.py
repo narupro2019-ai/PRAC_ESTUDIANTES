@@ -346,7 +346,7 @@ def new_assignment():
             fecha_inicio = request.form['fecha_inicio']
             fecha_fin = request.form['fecha_fin']
 
-            # Validación de conflicto de horario y fechas
+            # Validación de conflicto
             cur.execute('''
                 SELECT COUNT(*) FROM asignaciones 
                 WHERE estudiante_id = %s 
@@ -356,9 +356,9 @@ def new_assignment():
             
             if cur.fetchone()[0] > 0:
                 flash('❌ Conflicto: El estudiante ya tiene una asignación en ese horario y rango de fechas.', 'danger')
-                conn.close()
                 return redirect(url_for('new_assignment'))
 
+            # Insertar asignación
             cur.execute('''
                 INSERT INTO asignaciones 
                 (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
@@ -376,13 +376,20 @@ def new_assignment():
             cur.close()
             conn.close()
 
-    # GET - Cargar listas para los select
+    # ==================== GET (Cargar formulario) ====================
+    # Nueva conexión para GET
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
+    
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
     docentes = cur.fetchall()
+    
     cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
     escenarios = cur.fetchall()
+    
     cur.close()
     conn.close()
     
