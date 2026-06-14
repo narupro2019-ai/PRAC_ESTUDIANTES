@@ -337,7 +337,7 @@ def new_assignment():
         conn = None
         cur = None
         try:
-            # Validación explícita de campos antes de convertir a int
+            # Capturar valores del formulario
             estudiante_id = request.form.get('estudiante_id')
             docente_id = request.form.get('docente_id')
             escenario_id = request.form.get('escenario_id')
@@ -346,6 +346,7 @@ def new_assignment():
             fecha_inicio = request.form.get('fecha_inicio')
             fecha_fin = request.form.get('fecha_fin')
 
+            # Validaciones básicas
             if not estudiante_id or not docente_id or not escenario_id or not rotacion:
                 flash('❌ Debe seleccionar estudiante, docente, escenario y rotación', 'danger')
                 return redirect(url_for('new_assignment'))
@@ -363,11 +364,14 @@ def new_assignment():
             cur.execute('''
                 SELECT COUNT(*) FROM asignaciones 
                 WHERE estudiante_id = %s 
-                AND ((fecha_inicio <= %s AND fecha_fin >= %s) 
-                  OR (fecha_inicio <= %s AND fecha_fin >= %s))
+                AND (
+                    (fecha_inicio <= %s AND fecha_fin >= %s) 
+                    OR (fecha_inicio <= %s AND fecha_fin >= %s)
+                )
             ''', (estudiante_id, fecha_fin, fecha_inicio, fecha_inicio, fecha_fin))
             
-            if cur.fetchone()[0] > 0:
+            conflictos = cur.fetchone()[0]
+            if conflictos > 0:
                 flash('❌ Conflicto: El estudiante ya tiene asignación en ese rango de fechas.', 'danger')
                 return redirect(url_for('new_assignment'))
 
@@ -412,6 +416,7 @@ def new_assignment():
                          estudiantes=estudiantes, 
                          docentes=docentes, 
                          escenarios=escenarios)
+
 
 @app.route('/edit_assignment/<int:id>', methods=['GET', 'POST'])
 def edit_assignment(id):
