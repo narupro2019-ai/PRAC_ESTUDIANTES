@@ -537,5 +537,145 @@ def export_excel():
         download_name='Programacion_Practicas.xlsx'
     )
 
+# ==================== REPORTE EXCEL PROFESIONAL ====================
+@app.route('/generate_excel_report')
+def generate_excel_report():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute('''
+        SELECT 
+            e.nombre as estudiante,
+            e.documento,
+            e.nivel_practica,
+            e.grupo,
+            d.nombre as docente,
+            es.nombre as escenario,
+            a.rotacion,
+            a.horario,
+            a.fecha_inicio,
+            a.fecha_fin,
+            es.direccion
+        FROM asignaciones a
+        JOIN estudiantes e ON a.estudiante_id = e.id
+        JOIN docentes d ON a.docente_id = d.id
+        JOIN escenarios es ON a.escenario_id = es.id
+        ORDER BY e.nivel_practica, e.grupo, a.rotacion, e.nombre
+    ''')
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    if not rows:
+        flash('No hay asignaciones para generar el reporte', 'warning')
+        return redirect(url_for('index'))
+
+    import pandas as pd
+    import io
+
+    columns = ["Estudiante", "Documento", "Nivel Práctica", "Grupo", "Docente", 
+               "Escenario", "Rotación", "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+    
+    df = pd.DataFrame(rows, columns=columns)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Programación General')
+        
+        ws = writer.sheets['Programación General']
+        
+        # Formato similar a tus archivos
+        for col in range(1, len(columns) + 1):
+            col_letter = ws.cell(row=1, column=col).column_letter
+            ws.column_dimensions[col_letter].width = 28
+
+        # Título grande
+        ws['A1'] = "PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1"
+        ws.merge_cells('A1:K1')
+        ws['A1'].font = Font(bold=True, size=14)
+
+    output.seek(0)
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='Programacion_Practicas_2026-1.xlsx'
+    )
+
+
+# ==================== REPORTE PDF PROFESIONAL ====================
+@app.route('/generate_pdf_report')
+def generate_pdf_report():
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    import io
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT 
+            e.nombre, e.documento, e.nivel_practica, e.grupo,
+            d.nombre as docente, es.nombre as escenario,
+            a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
+        FROM asignaciones a
+        JOIN estudiantes e ON a.estudiante_id = e.id
+        JOIN docentes d ON a.docente_id = d.id
+        JOIN escenarios es ON a.escenario_id = es.id
+        ORDER BY e.nivel_practica, a.rotacion, e.nombre
+    ''')
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    if not rows:
+        flash('No hay datos para generar el PDF', 'warning')
+        return redirect(url_for('index'))
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), 
+                           rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Título
+    title = Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", styles['Title'])
+    elements.append(title)
+    elements.append(Spacer(1, 20))
+
+    # Datos en tabla
+    data = [["Estudiante", "Documento", "Nivel", "Grupo", "Docente", "Escenario", 
+             "Rotación", "Horario", "Fecha Inicio", "Fecha Fin"]]
+    
+    for row in rows:
+        data.append([str(x) for x in row])
+
+    table = Table(data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='Programacion_Practicas_2026-1.pdf'
+    )
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
