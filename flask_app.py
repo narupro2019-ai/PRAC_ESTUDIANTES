@@ -337,8 +337,16 @@ def new_assignment():
         conn = None
         cur = None
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            # Validación explícita de campos
+            if not request.form.get('estudiante_id'):
+                flash('❌ Debe seleccionar un estudiante', 'danger')
+                return redirect(url_for('new_assignment'))
+            if not request.form.get('docente_id'):
+                flash('❌ Debe seleccionar un docente', 'danger')
+                return redirect(url_for('new_assignment'))
+            if not request.form.get('escenario_id'):
+                flash('❌ Debe seleccionar un escenario', 'danger')
+                return redirect(url_for('new_assignment'))
 
             estudiante_id = int(request.form['estudiante_id'])
             docente_id = int(request.form['docente_id'])
@@ -347,6 +355,9 @@ def new_assignment():
             horario = request.form.get('horario', '').strip()
             fecha_inicio = request.form['fecha_inicio']
             fecha_fin = request.form['fecha_fin']
+
+            conn = get_db_connection()
+            cur = conn.cursor()
 
             # Validación de conflicto
             cur.execute('''
@@ -360,7 +371,7 @@ def new_assignment():
                 flash('❌ Conflicto: El estudiante ya tiene asignación en ese horario y fechas.', 'danger')
                 return redirect(url_for('new_assignment'))
 
-            # Guardar asignación
+            # Insertar
             cur.execute('''
                 INSERT INTO asignaciones 
                 (estudiante_id, docente_id, escenario_id, rotacion, horario, fecha_inicio, fecha_fin)
@@ -372,7 +383,7 @@ def new_assignment():
             return redirect(url_for('asignaciones_list'))
 
         except ValueError:
-            flash('❌ Error: Todos los campos son obligatorios', 'danger')
+            flash('❌ Error: Verifique que haya seleccionado estudiante, docente, escenario y rotación', 'danger')
         except Exception as e:
             flash(f'❌ Error al guardar: {str(e)}', 'danger')
             if conn:
@@ -383,16 +394,14 @@ def new_assignment():
             if conn:
                 conn.close()
 
-    # ==================== GET ====================
+    # GET - Cargar formulario
     conn = get_db_connection()
     cur = conn.cursor()
     
     cur.execute("SELECT id, nombre, cedula FROM estudiantes ORDER BY nombre")
     estudiantes = cur.fetchall()
-    
     cur.execute("SELECT id, nombre FROM docentes ORDER BY nombre")
     docentes = cur.fetchall()
-    
     cur.execute("SELECT id, nombre FROM escenarios ORDER BY nombre")
     escenarios = cur.fetchall()
     
