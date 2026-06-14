@@ -587,20 +587,31 @@ def generate_pdf_report():
         from reportlab.lib.pagesizes import landscape, letter
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
         from reportlab.lib.styles import getSampleStyleSheet
+        import pandas as pd
         import io
-        import datetime
 
+        # ✅ MISMA LÓGICA QUE EL EXCEL
         conn = get_db_connection()
         cur = conn.cursor()
+
         cur.execute('''
-            SELECT e.nombre, e.cedula, e.nivel_practica, d.nombre as Docente, 
-                   es.nombre as Escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin, es.direccion
+            SELECT 
+                e.nombre AS "Estudiante",
+                e.cedula AS "Documento",
+                es.nombre AS "Escenario",
+                d.nombre AS "Docente",
+                a.rotacion AS "Rotación",
+                a.horario AS "Horario",
+                a.fecha_inicio AS "Fecha Inicio",
+                a.fecha_fin AS "Fecha Fin",
+                es.direccion AS "Dirección"
             FROM asignaciones a
             JOIN estudiantes e ON a.estudiante_id = e.id
             JOIN docentes d ON a.docente_id = d.id
             JOIN escenarios es ON a.escenario_id = es.id
             ORDER BY e.nombre ASC, a.rotacion ASC
         ''')
+
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -609,51 +620,64 @@ def generate_pdf_report():
             flash('⚠️ No hay asignaciones para exportar', 'warning')
             return redirect(url_for('index'))
 
+        # ✅ USAR PANDAS IGUAL QUE EL EXCEL PARA PROCESAR LOS DATOS
+        columns = ["Estudiante", "Documento", "Escenario", "Docente", "Rotación",
+                   "Horario", "Fecha Inicio", "Fecha Fin", "Dirección"]
+
+        df = pd.DataFrame(rows, columns=columns)
+
+        # Formatear fechas igual que el excel las interpreta
+        import datetime
+        for col in ["Fecha Inicio", "Fecha Fin"]:
+            df[col] = pd.to_datetime(df[col], errors='coerce').dt.strftime("%d/%m/%Y").fillna("")
+
+        # ✅ CONSTRUIR PDF CON LOS DATOS DEL DATAFRAME
         buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(letter),
+            leftMargin=20,
+            rightMargin=20,
+            topMargin=30,
+            bottomMargin=30
+        )
         elements = []
         styles = getSampleStyleSheet()
 
         elements.append(Paragraph("PROGRAMACIÓN DE PRÁCTICAS ACADÉMICAS 2026-1", styles['Title']))
         elements.append(Spacer(1, 20))
 
-        # Encabezados
-        data = [["Estudiante", "Cédula", "Nivel", "Docente", "Escenario", 
-                 "Rotación", "Horario", "Inicio", "Fin", "Dirección"]]
+        # ✅ ENCABEZADOS + FILAS DESDE EL DATAFRAME (no desde rows directamente)
+        data = [columns]  # Fila de encabezados
+        for _, fila in df.iterrows():
+            data.append([str(val) if val else "" for val in fila])
 
-        for row in rows:
-            fila = []
-            for idx, val in enumerate(row):
-                # columnas fecha_inicio y fecha_fin
-                if idx in (7, 8) and val is not None:
-                    if isinstance(val, (datetime.date, datetime.datetime)):
-                        fila.append(val.strftime("%d/%m/%Y"))
-                    else:
-                        fila.append(str(val))
-                else:
-                    fila.append(str(val))
-            data.append(fila)
+        # Anchos de columna proporcionales al contenido
+        col_widths = [120, 80, 100, 100, 55, 55, 65, 65, 110]
 
-        table = Table(data, repeatRows=1)
+        table = Table(data, colWidths=col_widths, repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),  # filas alternas
         ]))
 
         elements.append(table)
         doc.build(elements)
-
         buffer.seek(0)
-        return send_file(buffer,
-                         mimetype='application/pdf',
-                         as_attachment=True,
-                         download_name='Programacion_Practicas_2026-1.pdf')
+
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='Programacion_Practicas_2026-1.pdf'
+        )
 
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
