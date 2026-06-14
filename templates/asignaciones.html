@@ -2,11 +2,16 @@
 {% block content %}
 
 <div class="container mt-4">
-    <h2>📋 Asignaciones de Prácticas</h2>
-    <a href="{{ url_for('new_assignment') }}" class="btn btn-primary mb-3">+ Nueva Asignación</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Asignaciones de Prácticas</h2>
+        <a href="{{ url_for('new_assignment') }}" class="btn btn-primary btn-lg">
+            + Nueva Asignación
+        </a>
+    </div>
 
+    {% if asignaciones %}
     <div class="table-responsive">
-        <table class="table table-hover table-bordered">
+        <table class="table table-hover table-bordered align-middle">
             <thead class="table-dark">
                 <tr>
                     <th>Estudiante</th>
@@ -23,26 +28,36 @@
             <tbody>
                 {% for a in asignaciones %}
                 <tr>
-                    <td>{{ a['estudiante'] }}</td>
+                    <td><strong>{{ a['estudiante'] }}</strong></td>
                     <td>{{ a['cedula'] }}</td>
                     <td>{{ a['docente'] }}</td>
                     <td>{{ a['escenario'] }}</td>
-                    <td><strong>{{ a['rotacion'] }}</strong></td>
-                    <td>{{ a['horario'] }}</td>
+                    <td class="text-center"><span class="badge bg-primary fs-6">{{ a['rotacion'] }}</span></td>
+                    <td>{{ a['horario'] | default('—') }}</td>
                     <td>{{ a['fecha_inicio'] }}</td>
                     <td>{{ a['fecha_fin'] }}</td>
                     <td>
-                        <a href="{{ url_for('edit_assignment', id=a['id']) }}" class="btn btn-warning btn-sm">Editar</a>
-                        <a href="{{ url_for('delete_assignment', id=a['id']) }}" class="btn btn-danger btn-sm" 
-                           onclick="return confirm('¿Eliminar esta asignación?')">Eliminar</a>
+                        <a href="{{ url_for('edit_assignment', id=a['id']) }}" 
+                           class="btn btn-warning btn-sm mb-1">Editar</a>
+                        <a href="{{ url_for('delete_assignment', id=a['id']) }}" 
+                           class="btn btn-danger btn-sm"
+                           onclick="return confirm('¿Estás seguro de eliminar esta asignación?')">
+                           Eliminar
+                        </a>
                     </td>
                 </tr>
-                {% else %}
-                <tr><td colspan="9" class="text-center">No hay asignaciones registradas</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% else %}
+    <div class="alert alert-info text-center py-5">
+        <h4>No hay asignaciones registradas todavía</h4>
+        <a href="{{ url_for('new_assignment') }}" class="btn btn-primary mt-3">
+            Crear Primera Asignación
+        </a>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}
