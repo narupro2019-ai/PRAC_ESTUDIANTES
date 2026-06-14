@@ -1,31 +1,38 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>👨‍🏫 Docentes</h2>
-<a href="/register_docente" class="btn btn-primary mb-3">+ Nuevo Docente</a>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Documento</th>
-            <th>Nombre</th>
-            <th>Correo</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for d in docentes %}
-        <tr>
-            <td>{{ d['id'] }}</td>
-            <td>{{ d['documento'] }}</td>
-            <td>{{ d['nombre'] }}</td>
-            <td>{{ d.get('correo', '') }}</td>
-            <td>
-                <a href="/edit_docente/{{ d['id'] }}" class="btn btn-sm btn-warning">Editar</a>
-                <a href="/delete_docente/{{ d['id'] }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar?')">Eliminar</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="container mt-4">
+    <h2>👨‍🏫 Docentes Registrados</h2>
+    <a href="{{ url_for('register_docente') }}" class="btn btn-success mb-3">+ Nuevo Docente</a>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Documento</th>
+                    <th>Nombre Completo</th>
+                    <th>Correo Electrónico</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in docentes %}
+                <tr>
+                    <td>{{ d['documento'] }}</td>
+                    <td>{{ d['nombre'] }}</td>
+                    <td>{{ d['correo'] }}</td>
+                    <td>
+                        <a href="{{ url_for('edit_docente', id=d['id']) }}" class="btn btn-warning btn-sm">Editar</a>
+                        <a href="{{ url_for('delete_docente', id=d['id']) }}" class="btn btn-danger btn-sm" 
+                           onclick="return confirm('¿Eliminar docente?')">Eliminar</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center">No hay docentes registrados</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endblock %}
