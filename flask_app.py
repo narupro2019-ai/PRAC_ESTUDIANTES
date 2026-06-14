@@ -594,16 +594,20 @@ def generate_pdf_report():
         cur = conn.cursor()
         cur.execute('''
             SELECT e.nombre, e.cedula, e.nivel_practica, d.nombre as Docente, 
-                   es.nombre as Escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin
+                   es.nombre as Escenario, a.rotacion, a.horario, a.fecha_inicio, a.fecha_fin, es.direccion
             FROM asignaciones a
             JOIN estudiantes e ON a.estudiante_id = e.id
             JOIN docentes d ON a.docente_id = d.id
             JOIN escenarios es ON a.escenario_id = es.id
-            ORDER BY e.nivel_practica, a.rotacion, e.nombre
+            ORDER BY e.nombre ASC, a.rotacion ASC
         ''')
         rows = cur.fetchall()
         cur.close()
         conn.close()
+
+        if not rows:
+            flash('⚠️ No hay asignaciones para exportar', 'warning')
+            return redirect(url_for('index'))
 
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
@@ -615,12 +619,13 @@ def generate_pdf_report():
 
         # Encabezados
         data = [["Estudiante", "Cédula", "Nivel", "Docente", "Escenario", 
-                 "Rotación", "Horario", "Inicio", "Fin"]]
+                 "Rotación", "Horario", "Inicio", "Fin", "Dirección"]]
 
         for row in rows:
             fila = []
             for idx, val in enumerate(row):
-                if idx in (7, 8) and val is not None:  # columnas fecha_inicio y fecha_fin
+                # columnas fecha_inicio y fecha_fin
+                if idx in (7, 8) and val is not None:
                     if isinstance(val, (datetime.date, datetime.datetime)):
                         fila.append(val.strftime("%d/%m/%Y"))
                     else:
@@ -635,7 +640,10 @@ def generate_pdf_report():
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold')
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE')
         ]))
 
         elements.append(table)
@@ -650,6 +658,7 @@ def generate_pdf_report():
     except Exception as e:
         flash(f'Error generando PDF: {str(e)}', 'danger')
         return redirect(url_for('index'))
+
 
 
         
