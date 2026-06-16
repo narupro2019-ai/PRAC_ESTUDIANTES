@@ -976,6 +976,34 @@ def delete_all_assignments():
         if conn:
             conn.close()
 
+@app.route('/search_assignments')
+def search_assignments():
+    query = request.args.get('q', '').strip()
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Buscar por nombre de estudiante o número de documento
+    cur.execute('''
+        SELECT a.id, e.nombre AS estudiante, e.cedula, d.nombre AS docente, 
+               s.nombre AS escenario, a.rotacion, a.horario, 
+               a.fecha_inicio, a.fecha_fin
+        FROM asignaciones a
+        JOIN estudiantes e ON a.estudiante_id = e.id
+        JOIN docentes d ON a.docente_id = d.id
+        JOIN escenarios s ON a.escenario_id = s.id
+        WHERE e.nombre ILIKE %s OR e.cedula ILIKE %s
+        ORDER BY a.fecha_inicio
+    ''', (f'%{query}%', f'%{query}%'))
+
+    resultados = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    if not resultados:
+        flash('⚠️ No se encontraron asignaciones con ese criterio', 'warning')
+
+    return render_template('asignaciones.html', asignaciones=resultados)
+
 
         
 if __name__ == '__main__':
