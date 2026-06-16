@@ -15,6 +15,11 @@
        onclick="return confirm('⚠️ ¿Seguro que deseas eliminar TODAS las asignaciones?')">
         🗑️ Eliminar Todas las Asignaciones
         </a>
+        <form method="GET" action="{{ url_for('search_assignments') }}" class="d-flex ms-3">
+        <input type="text" name="q" class="form-control me-2" 
+               placeholder="🔍 Buscar por documento o nombre" required>
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        </form>
     </div>
 
     {% if asignaciones %}
