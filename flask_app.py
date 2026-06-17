@@ -69,14 +69,16 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
     
+    # Crear todas las tablas
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS estudiantes (
             id SERIAL PRIMARY KEY,
             cedula TEXT UNIQUE NOT NULL,
@@ -121,11 +123,20 @@ def init_db():
         );
     ''')
     conn.commit()
+
+    # ==================== USUARIO POR DEFECTO ====================
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE username = 'admin'")
+    exists = cur.fetchone()['count']
+
+    if exists == 0:
+        hashed = generate_password_hash('admin123')
+        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", 
+                   ('admin', hashed))
+        conn.commit()
+        print("✅ Usuario por defecto creado: admin / admin123")
+
     cur.close()
     conn.close()
-
-with app.app_context():
-    init_db()
 
 
 # ====================== AUTENTICACIÓN ======================
