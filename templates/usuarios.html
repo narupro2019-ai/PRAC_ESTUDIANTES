@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>👥 Gestión de Usuarios</h2>
+<a href="{{ url_for('register_usuario') }}" class="btn btn-success mb-3">+ Nuevo Usuario</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Usuario</th>
+            <th>Fecha de Creación</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in usuarios %}
+        <tr>
+            <td>{{ u['id'] }}</td>
+            <td>{{ u['username'] }}</td>
+            <td>{{ u['created_at']|string[:19] }}</td>
+            <td>
+                <a href="{{ url_for('edit_usuario', id=u['id']) }}" class="btn btn-sm btn-warning">Editar</a>
+                <a href="{{ url_for('delete_usuario', id=u['id']) }}" 
+                   class="btn btn-sm btn-danger"
+                   onclick="return confirm('¿Eliminar este usuario?')">Eliminar</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
