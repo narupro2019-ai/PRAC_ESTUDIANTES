@@ -175,7 +175,6 @@ def logout():
 
 # ==================== DASHBOARD ====================
 @app.route('/')
-@login_required
 def index():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -195,7 +194,6 @@ def index():
 
 # ==================== ESTUDIANTES CRUD ====================
 @app.route('/estudiantes')
-@login_required
 def estudiantes():
     conn = get_db_connection()
     cur = conn.cursor()
