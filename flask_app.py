@@ -1190,13 +1190,20 @@ def register_usuario():
             cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", 
                        (username, hashed))
             conn.commit()
-            flash('✅ Usuario creado correctamente', 'success')
+
+            # ==================== ELIMINAR USUARIO POR DEFECTO ====================
+            cur.execute("DELETE FROM users WHERE username = 'admin'")
+            conn.commit()
+
+            flash('✅ Usuario creado correctamente. El usuario "admin" por defecto ha sido eliminado.', 'success')
             return redirect(url_for('usuarios'))
+        
         except psycopg2.IntegrityError:
             flash('⚠️ Ese nombre de usuario ya existe', 'danger')
         finally:
             cur.close()
             conn.close()
+    
     return render_template('register_usuario.html')
 
 
