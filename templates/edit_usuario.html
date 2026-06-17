@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-white text-center">
+                    <h4>✏️ Editar Usuario</h4>
+                </div>
+                <div class="card-body p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }}">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nombre de Usuario</label>
+                            <input type="text" name="username" value="{{ usuario['username'] }}" 
+                                   class="form-control" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Nueva Contraseña (dejar en blanco si no quieres cambiarla)</label>
+                            <input type="password" name="password" class="form-control" 
+                                   placeholder="Dejar vacío para mantener la actual" minlength="6">
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning btn-lg">Guardar Cambios</button>
+                            <a href="{{ url_for('usuarios') }}" class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
