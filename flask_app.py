@@ -1276,5 +1276,6 @@ def delete_usuario(id):
 
 
         
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    with app.app_context():
+        init_db()   # fuerza la creación de tablas y usuario admin
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
