@@ -37,9 +37,9 @@ def load_user(user_id):
         if user:
             return User(user['id'], user['username'])
         return None
-    except:
+    except Exception as e:
+        print("Error en load_user:", e)  # Para ver errores en logs
         return None
-
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -115,14 +115,13 @@ with app.app_context():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Si ya está logueado, lo sacamos para forzar login cada vez
     if current_user.is_authenticated:
-        logout_user()   # ← Esto cierra la sesión anterior
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password'].strip()
-
+        
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, username, password FROM users WHERE username = %s", (username,))
@@ -131,15 +130,13 @@ def login():
         conn.close()
 
         if user and check_password_hash(user['password'], password):
-            # Importante: No hacemos sesión permanente
-            login_user(User(user['id'], user['username']), remember=False)
+            login_user(User(user['id'], user['username']), remember=True)  # Cambiado a True
             flash('✅ Inicio de sesión exitoso', 'success')
             return redirect(url_for('index'))
         else:
             flash('❌ Usuario o contraseña incorrectos', 'danger')
 
     return render_template('login.html')
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
