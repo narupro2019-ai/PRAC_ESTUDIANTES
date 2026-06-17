@@ -1148,6 +1148,102 @@ def search_assignments():
     return render_template('asignaciones.html', asignaciones=resultados)
 
 
+# ==================== USUARIOS CRUD (Solo Administradores) ====================
+@app.route('/usuarios')
+@login_required
+def usuarios():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, username, created_at FROM users ORDER BY created_at DESC")
+    usuarios = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('usuarios.html', usuarios=usuarios)
+
+
+@app.route('/register_usuario', methods=['GET', 'POST'])
+@login_required
+def register_usuario():
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
+
+        if len(password) < 6:
+            flash('La contraseña debe tener al menos 6 caracteres', 'danger')
+            return render_template('register_usuario.html')
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            hashed = generate_password_hash(password)
+            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", 
+                       (username, hashed))
+            conn.commit()
+            flash('✅ Usuario creado correctamente', 'success')
+            return redirect(url_for('usuarios'))
+        except psycopg2.IntegrityError:
+            flash('⚠️ Ese nombre de usuario ya existe', 'danger')
+        finally:
+            cur.close()
+            conn.close()
+    return render_template('register_usuario.html')
+
+
+@app.route('/edit_usuario/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_usuario(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form.get('password', '').strip()
+
+        try:
+            if password:
+                hashed = generate_password_hash(password)
+                cur.execute("UPDATE users SET username=%s, password=%s WHERE id=%s", 
+                           (username, hashed, id))
+            else:
+                cur.execute("UPDATE users SET username=%s WHERE id=%s", (username, id))
+            
+            conn.commit()
+            flash('✅ Usuario actualizado', 'success')
+            return redirect(url_for('usuarios'))
+        except psycopg2.IntegrityError:
+            flash('⚠️ Ese nombre de usuario ya existe', 'danger')
+        finally:
+            cur.close()
+            conn.close()
+
+    cur.execute("SELECT id, username FROM users WHERE id = %s", (id,))
+    usuario = cur.fetchone()
+    cur.close()
+    conn.close()
+    return render_template('edit_usuario.html', usuario=usuario)
+
+
+@app.route('/delete_usuario/<int:id>')
+@login_required
+def delete_usuario(id):
+    # Evitar eliminar el último usuario
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) as count FROM users")
+    count = cur.fetchone()['count']
+    
+    if count <= 1:
+        flash('❌ No puedes eliminar el último usuario', 'danger')
+    else:
+        cur.execute("DELETE FROM users WHERE id = %s", (id,))
+        conn.commit()
+        flash('🗑️ Usuario eliminado', 'danger')
+    
+    cur.close()
+    conn.close()
+    return redirect(url_for('usuarios'))
+
+
         
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
