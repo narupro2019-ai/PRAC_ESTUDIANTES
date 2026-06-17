@@ -117,9 +117,8 @@ with app.app_context():
 # ====================== AUTENTICACIÓN ======================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Forzar cerrar sesión anterior cada vez que se acceda al login
     if current_user.is_authenticated:
-        logout_user()
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         username = request.form['username'].strip()
@@ -140,7 +139,6 @@ def login():
             flash('❌ Usuario o contraseña incorrectos', 'danger')
 
     return render_template('login.html')
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -197,6 +195,7 @@ def index():
 
 # ==================== ESTUDIANTES CRUD ====================
 @app.route('/estudiantes')
+@login_required
 def estudiantes():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -207,6 +206,7 @@ def estudiantes():
     return render_template('estudiantes.html', estudiantes=estudiantes)
 
 @app.route('/register_estudiante', methods=['GET', 'POST'])
+@login_required
 def register_estudiante():
     if request.method == 'POST':
         cedula = request.form['cedula'].strip()
@@ -236,6 +236,7 @@ def register_estudiante():
     return render_template('register_estudiante.html')
 
 @app.route('/edit_estudiante/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_estudiante(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -265,6 +266,7 @@ def edit_estudiante(id):
     return render_template('edit_estudiante.html', estudiante=estudiante)
 
 @app.route('/delete_estudiante/<int:id>')
+@login_required
 def delete_estudiante(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -277,6 +279,7 @@ def delete_estudiante(id):
 
 # ==================== DOCENTES CRUD ====================
 @app.route('/docentes')
+@login_required
 def docentes():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -287,6 +290,7 @@ def docentes():
     return render_template('docentes.html', docentes=docentes)
 
 @app.route('/register_docente', methods=['GET', 'POST'])
+@login_required
 def register_docente():
     if request.method == 'POST':
         documento = request.form['documento'].strip()
@@ -311,6 +315,7 @@ def register_docente():
     return render_template('register_docente.html')
 
 @app.route('/edit_docente/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_docente(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -333,6 +338,7 @@ def edit_docente(id):
     return render_template('edit_docente.html', docente=docente)
 
 @app.route('/delete_docente/<int:id>')
+@login_required
 def delete_docente(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -345,6 +351,7 @@ def delete_docente(id):
 
 # ==================== ESCENARIOS CRUD ====================
 @app.route('/escenarios')
+@login_required
 def escenarios():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -355,6 +362,7 @@ def escenarios():
     return render_template('escenarios.html', escenarios=escenarios)
 
 @app.route('/register_escenario', methods=['GET', 'POST'])
+@login_required
 def register_escenario():
     if request.method == 'POST':
         nombre = request.form['nombre'].strip()
@@ -375,6 +383,7 @@ def register_escenario():
     return render_template('register_escenario.html')
 
 @app.route('/edit_escenario/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_escenario(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -397,6 +406,7 @@ def edit_escenario(id):
     return render_template('edit_escenario.html', escenario=escenario)
 
 @app.route('/delete_escenario/<int:id>')
+@login_required
 def delete_escenario(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -410,6 +420,7 @@ def delete_escenario(id):
 # ==================== ASIGNACIONES - CRUD COMPLETO ====================
 
 @app.route('/asignaciones')
+@login_required
 def asignaciones_list():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -437,6 +448,7 @@ def asignaciones_list():
 
 
 @app.route('/new_assignment', methods=['GET', 'POST'])
+@login_required
 def new_assignment():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -497,6 +509,7 @@ def new_assignment():
 
 
 @app.route('/edit_assignment/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_assignment(id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -595,6 +608,7 @@ def edit_assignment(id):
 
 
 @app.route('/delete_assignment/<int:id>')
+@login_required
 def delete_assignment(id):
     conn = None
     cur = None
@@ -628,6 +642,7 @@ def delete_assignment(id):
 
 # ==================== EXPORTAR A EXCEL ====================
 @app.route('/generate_excel_report')
+@login_required
 def generate_excel_report():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -805,6 +820,7 @@ def generate_excel_report():
 
 
 @app.route('/generate_pdf_report')
+@login_required
 def generate_pdf_report():
     try:
         from reportlab.lib import colors
@@ -975,6 +991,7 @@ def generate_pdf_report():
 
 
 @app.route('/auto_assignment', methods=['GET', 'POST'])
+@login_required
 def auto_assignment():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -1057,6 +1074,7 @@ def auto_assignment():
 
 
 @app.route('/delete_all_assignments')
+@login_required
 def delete_all_assignments():
     conn = None
     cur = None
@@ -1082,6 +1100,7 @@ def delete_all_assignments():
             conn.close()
 
 @app.route('/search_assignments')
+@login_required
 def search_assignments():
     query = request.args.get('q', '').strip()
     conn = get_db_connection()
