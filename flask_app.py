@@ -145,11 +145,12 @@ def register():
 
 
 @app.route('/logout')
-@login_required
 def logout():
     logout_user()
     flash('👋 Sesión cerrada', 'info')
     return redirect(url_for('login'))
+
+
 # ==================== DASHBOARD ====================
 @app.route('/')
 @login_required
