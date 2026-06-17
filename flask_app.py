@@ -124,16 +124,7 @@ def init_db():
     ''')
     conn.commit()
 
-    # ==================== USUARIO POR DEFECTO ====================
-    cur.execute("SELECT COUNT(*) as count FROM users WHERE username = 'admin'")
-    exists = cur.fetchone()['count']
-
-    if exists == 0:
-        hashed = generate_password_hash('admin123')
-        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", 
-                   ('admin', hashed))
-        conn.commit()
-        print("✅ Usuario por defecto creado: admin / admin123")
+    
 
     cur.close()
     conn.close()
