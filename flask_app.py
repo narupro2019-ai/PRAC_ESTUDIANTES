@@ -106,8 +106,9 @@ with app.app_context():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Si ya está logueado, lo sacamos para forzar login cada vez
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        logout_user()   # ← Esto cierra la sesión anterior
     
     if request.method == 'POST':
         username = request.form['username'].strip()
@@ -121,7 +122,8 @@ def login():
         conn.close()
 
         if user and check_password_hash(user['password'], password):
-            login_user(User(user['id'], user['username']))
+            # Importante: No hacemos sesión permanente
+            login_user(User(user['id'], user['username']), remember=False)
             flash('✅ Inicio de sesión exitoso', 'success')
             return redirect(url_for('index'))
         else:
