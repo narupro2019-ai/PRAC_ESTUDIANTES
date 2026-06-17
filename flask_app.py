@@ -145,19 +145,6 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
-    # Verificar usuario admin de forma segura
-    admin_exists = False
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) as count FROM users WHERE username = 'admin'")
-        admin_exists = cur.fetchone()['count'] > 0
-        cur.close()
-        conn.close()
-    except:
-        # Si la tabla aún no existe (primera carga), no mostrar nada
-        admin_exists = False
-
     if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password'].strip()
@@ -176,7 +163,7 @@ def login():
         else:
             flash('❌ Usuario o contraseña incorrectos', 'danger')
 
-    return render_template('login.html', admin_exists=admin_exists)
+    return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -1203,20 +1190,13 @@ def register_usuario():
             cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", 
                        (username, hashed))
             conn.commit()
-
-            # ==================== ELIMINAR USUARIO POR DEFECTO ====================
-            cur.execute("DELETE FROM users WHERE username = 'admin'")
-            conn.commit()
-
-            flash('✅ Usuario creado correctamente. El usuario "admin" por defecto ha sido eliminado.', 'success')
+            flash('✅ Usuario creado correctamente', 'success')
             return redirect(url_for('usuarios'))
-        
         except psycopg2.IntegrityError:
             flash('⚠️ Ese nombre de usuario ya existe', 'danger')
         finally:
             cur.close()
             conn.close()
-    
     return render_template('register_usuario.html')
 
 
@@ -1276,6 +1256,5 @@ def delete_usuario(id):
 
 
         
-    with app.app_context():
-        init_db()   # fuerza la creación de tablas y usuario admin
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
