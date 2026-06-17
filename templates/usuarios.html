@@ -2,10 +2,10 @@
 {% block content %}
 
 <h2>👥 Gestión de Usuarios</h2>
-<a href="{{ url_for('register') }}" class="btn btn-success mb-3">+ Nuevo Usuario</a>
+<a href="{{ url_for('register_usuario') }}" class="btn btn-success mb-3">+ Nuevo Usuario</a>
 
-<table class="table table-striped">
-    <thead>
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
         <tr>
             <th>ID</th>
             <th>Usuario</th>
@@ -17,14 +17,22 @@
         {% for u in usuarios %}
         <tr>
             <td>{{ u['id'] }}</td>
-            <td>{{ u['username'] }}</td>
-            <td>{{ u['created_at']|string[:19] }}</td>
+            <td><strong>{{ u['username'] }}</strong></td>
+            <td>{{ u['created_at']|string|truncate(19, true, '') }}</td>
             <td>
-                <a href="{{ url_for('edit_usuario', id=u['id']) }}" class="btn btn-sm btn-warning">Editar</a>
+                <a href="{{ url_for('edit_usuario', id=u['id']) }}" 
+                   class="btn btn-sm btn-warning">Editar</a>
+                
                 <a href="{{ url_for('delete_usuario', id=u['id']) }}" 
                    class="btn btn-sm btn-danger"
-                   onclick="return confirm('¿Eliminar este usuario?')">Eliminar</a>
+                   onclick="return confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
+                   Eliminar
+                </a>
             </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4" class="text-center py-4">No hay usuarios registrados</td>
         </tr>
         {% endfor %}
     </tbody>
