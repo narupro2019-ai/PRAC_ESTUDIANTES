@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -11,12 +11,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
 
-# === CONFIGURACIÓN ANTI-PERSISTENCIA ===
+# Configuración de sesión para que NO se mantenga al cerrar pestaña
 app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = False
-app.config['SESSION_COOKIE_SECURE'] = False   # Cambia a True si usas HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = "Por favor inicia sesión"
+login_manager.login_message_category = "danger"
 
 # ==================== USER LOADER ====================
 class User(UserMixin):
@@ -36,9 +39,9 @@ def load_user(user_id):
         if user:
             return User(user['id'], user['username'])
         return None
-    except Exception as e:
-        print("Error en load_user:", e)  # Para ver errores en logs
+    except:
         return None
+
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
