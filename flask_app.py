@@ -13,11 +13,33 @@ app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
 
 # Configuración para que la sesión expire al cerrar el navegador
 app.config['SESSION_PERMANENT'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = False   # Importante
+app.config['PERMANENT_SESSION_LIFETIME'] = False
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# ==================== USER LOADER ====================
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username FROM users WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        if user:
+            return User(user['id'], user['username'])
+        return None
+    except:
+        return None
+
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
