@@ -175,7 +175,6 @@ def logout():
 
 # ==================== DASHBOARD ====================
 @app.route('/')
-@login_required
 def index():
     conn = get_db_connection()
     cur = conn.cursor()
