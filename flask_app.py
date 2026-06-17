@@ -145,6 +145,14 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
+    # Verificar si existe el usuario admin por defecto (para mostrar advertencia)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE username = 'admin'")
+    admin_exists = cur.fetchone()['count'] > 0
+    cur.close()
+    conn.close()
+
     if request.method == 'POST':
         username = request.form['username'].strip()
         password = request.form['password'].strip()
@@ -163,7 +171,7 @@ def login():
         else:
             flash('❌ Usuario o contraseña incorrectos', 'danger')
 
-    return render_template('login.html')
+    return render_template('login.html', admin_exists=admin_exists)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
