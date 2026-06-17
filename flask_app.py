@@ -12,8 +12,23 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
 
 # === CONFIGURACIÓN DE SESIÓN ===
-app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hora (en segundos)
+
+@app.before_request
+def make_session_permanent():
+    # 'SESSION_PERMANENT' no es una clave real de Flask: sin esto, la sesión
+    # se cerraba al cerrar el navegador y PERMANENT_SESSION_LIFETIME no aplicaba.
+    session.permanent = True
+
+# === LOGIN MANAGER ===
+# Esto es lo que realmente rompía el login: @login_manager.user_loader se usaba
+# más abajo pero login_manager nunca se creaba ni se enlazaba a la app, así que
+# la app lanzaba NameError al arrancar y ni siquiera llegaba a servir /login.
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
+login_manager.login_message_category = 'warning'
 
 # ==================== USER LOADER ====================
 class User(UserMixin):
