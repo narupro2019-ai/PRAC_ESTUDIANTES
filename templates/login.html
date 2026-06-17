@@ -11,25 +11,14 @@
                 </div>
                 <div class="card-body p-4">
 
-                    <!-- Mensajes flash (solo una vez) -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'info' }} alert-dismissible fade show">
-                                    {{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
-
-                    <!-- Mensaje del usuario por defecto -->
+                    <!-- Solo mostramos el mensaje del usuario por defecto -->
                     {% if admin_exists %}
-                    <div class="alert alert-warning">
+                    <div class="alert alert-warning alert-dismissible fade show">
                         <strong>⚠️ Usuario por defecto:</strong><br>
                         Usuario: <strong>admin</strong><br>
                         Contraseña: <strong>admin123</strong><br>
-                        <small>Se eliminará automáticamente al crear un nuevo usuario.</small>
+                        <small>Este usuario se eliminará automáticamente cuando crees uno nuevo.</small>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                     {% endif %}
 
