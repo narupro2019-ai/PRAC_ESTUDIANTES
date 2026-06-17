@@ -11,15 +11,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
 
-# === CONFIGURACIÓN PARA QUE SIEMPRE PIDA LOGIN ===
-app.config['SESSION_PERMANENT'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = False
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = "Por favor inicia sesión para continuar"
-login_manager.login_message_category = "danger"
+# === CONFIGURACIÓN DE SESIÓN ===
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hora (en segundos)
 
 # ==================== USER LOADER ====================
 class User(UserMixin):
@@ -37,7 +31,12 @@ def load_user(user_id):
         cur.close()
         conn.close()
         if user:
-            return User(user['id'], user['username'])
+            # Si el cursor devuelve dict (RealDictCursor)
+            if isinstance(user, dict):
+                return User(user['id'], user['username'])
+            # Si devuelve tupla
+            else:
+                return User(user[0], user[1])
         return None
     except Exception as e:
         print("Error load_user:", e)
