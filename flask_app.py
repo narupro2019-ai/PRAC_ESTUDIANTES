@@ -11,15 +11,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
 
-# Configuración para que la sesión expire al cerrar el navegador
+# === CONFIGURACIÓN ANTI-PERSISTENCIA ===
 app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = False
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = "Por favor inicia sesión para continuar"
-login_manager.login_message_category = "danger"
+app.config['SESSION_COOKIE_SECURE'] = False   # Cambia a True si usas HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # ==================== USER LOADER ====================
 class User(UserMixin):
@@ -117,8 +114,9 @@ with app.app_context():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Forzar cerrar cualquier sesión anterior
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        logout_user()
     
     if request.method == 'POST':
         username = request.form['username'].strip()
@@ -132,7 +130,8 @@ def login():
         conn.close()
 
         if user and check_password_hash(user['password'], password):
-            login_user(User(user['id'], user['username']), remember=True)  # Cambiado a True
+            # remember=False + sesión no permanente
+            login_user(User(user['id'], user['username']), remember=False)
             flash('✅ Inicio de sesión exitoso', 'success')
             return redirect(url_for('index'))
         else:
@@ -168,7 +167,9 @@ def register():
 @app.route('/logout')
 def logout():
     logout_user()
-    flash('👋 Sesión cerrada', 'info')
+    # Limpiar sesión completamente
+    session.clear()
+    flash('👋 Sesión cerrada correctamente', 'info')
     return redirect(url_for('login'))
 
 
