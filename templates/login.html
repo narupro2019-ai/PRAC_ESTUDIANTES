@@ -10,16 +10,26 @@
                     <p class="mb-0 mt-1">Prácticas Fisioterapia 2026-1</p>
                 </div>
                 <div class="card-body p-4">
+
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
                             {% for category, message in messages %}
                                 <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show">
                                     {{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                                 </div>
                             {% endfor %}
                         {% endif %}
                     {% endwith %}
+
+                    <!-- Mensaje de advertencia mientras exista el usuario admin -->
+                    {% if admin_exists %}
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Usuario por defecto:</strong><br>
+                        Usuario: <strong>admin</strong><br>
+                        Contraseña: <strong>admin123</strong><br>
+                        <small>Se eliminará automáticamente al crear un nuevo usuario.</small>
+                    </div>
+                    {% endif %}
 
                     <form method="POST">
                         <div class="mb-3">
@@ -35,6 +45,9 @@
                         </button>
                     </form>
 
+                    <div class="text-center mt-3 text-muted small">
+                        Contacta al administrador si necesitas una cuenta
+                    </div>
                 </div>
             </div>
         </div>
