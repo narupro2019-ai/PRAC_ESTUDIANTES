@@ -11,14 +11,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'practicas-secret-2026')
 
-# Configuración de sesión para que NO se mantenga al cerrar pestaña
+# === CONFIGURACIÓN PARA QUE SIEMPRE PIDA LOGIN ===
 app.config['SESSION_PERMANENT'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = False
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = "Por favor inicia sesión"
+login_manager.login_message = "Por favor inicia sesión para continuar"
 login_manager.login_message_category = "danger"
 
 # ==================== USER LOADER ====================
@@ -39,7 +39,8 @@ def load_user(user_id):
         if user:
             return User(user['id'], user['username'])
         return None
-    except:
+    except Exception as e:
+        print("Error load_user:", e)
         return None
 
 
@@ -114,10 +115,9 @@ with app.app_context():
 
 
 # ====================== AUTENTICACIÓN ======================
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Forzar cerrar cualquier sesión anterior
+    # Forzar cerrar sesión anterior cada vez que se acceda al login
     if current_user.is_authenticated:
         logout_user()
     
@@ -133,7 +133,6 @@ def login():
         conn.close()
 
         if user and check_password_hash(user['password'], password):
-            # remember=False + sesión no permanente
             login_user(User(user['id'], user['username']), remember=False)
             flash('✅ Inicio de sesión exitoso', 'success')
             return redirect(url_for('index'))
@@ -141,6 +140,7 @@ def login():
             flash('❌ Usuario o contraseña incorrectos', 'danger')
 
     return render_template('login.html')
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -157,7 +157,7 @@ def register():
             hashed = generate_password_hash(password)
             cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed))
             conn.commit()
-            flash('✅ Usuario registrado. Ahora inicia sesión.', 'success')
+            flash('✅ Usuario registrado correctamente. Inicia sesión.', 'success')
             return redirect(url_for('login'))
         except psycopg2.IntegrityError:
             flash('⚠️ Ese nombre de usuario ya existe', 'danger')
@@ -170,8 +170,7 @@ def register():
 @app.route('/logout')
 def logout():
     logout_user()
-    # Limpiar sesión completamente
-    session.clear()
+    session.clear()   # Limpiar completamente la sesión
     flash('👋 Sesión cerrada correctamente', 'info')
     return redirect(url_for('login'))
 
