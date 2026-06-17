@@ -145,13 +145,18 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
-    # Verificar si existe el usuario admin por defecto (para mostrar advertencia)
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) as count FROM users WHERE username = 'admin'")
-    admin_exists = cur.fetchone()['count'] > 0
-    cur.close()
-    conn.close()
+    # Verificar usuario admin de forma segura
+    admin_exists = False
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) as count FROM users WHERE username = 'admin'")
+        admin_exists = cur.fetchone()['count'] > 0
+        cur.close()
+        conn.close()
+    except:
+        # Si la tabla aún no existe (primera carga), no mostrar nada
+        admin_exists = False
 
     if request.method == 'POST':
         username = request.form['username'].strip()
