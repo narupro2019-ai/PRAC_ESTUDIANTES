@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session, make_response
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -182,9 +182,14 @@ def register():
 @app.route('/logout')
 def logout():
     logout_user()
-    session.clear()   # Limpiar completamente la sesión
     flash('👋 Sesión cerrada correctamente', 'info')
-    return redirect(url_for('login'))
+    # No usamos session.clear() aquí: borraba la marca interna que Flask-Login
+    # usa para expirar la cookie "remember me" en la respuesta, así que una
+    # cookie "remember_token" que hubiera quedado de pruebas anteriores podía
+    # volver a autenticar al usuario en la siguiente petición a /login.
+    resp = make_response(redirect(url_for('login')))
+    resp.delete_cookie('remember_token')
+    return resp
 
 
 # ==================== DASHBOARD ====================
